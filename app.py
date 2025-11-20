@@ -5,27 +5,35 @@ import random
 from itertools import zip_longest
 
 # ==========================================
+# 0. URL 参数处理 (用于支持 Tag 链接跳转)
+# ==========================================
+# 如果 URL 中包含 ?q=xxx，优先将其作为搜索词
+if "q" in st.query_params:
+    # 获取参数并解码
+    param_q = st.query_params["q"]
+    if param_q:
+        st.session_state.search_query = param_q
+
+# ==========================================
 # 1. 配置区域
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式
+# 2. CSS 样式 (对齐修复 + Tag样式重构)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 布局与对齐 --- */
+        /* --- 布局组件微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (防变形、永久对齐) --- */
-        /* 只针对右侧大区域的按钮，不影响左侧 Tag */
-        /* 使用 nth-of-type 排除左侧栏 */
-        div[data-testid="column"]:not(:first-child) .stButton button {
+        /* --- 1. 主分类按钮 (绝对对齐修复) --- */
+        div[data-testid="column"] .stButton button {
             width: 100%;
-            min-height: 45px;
-            max-height: 45px; /* 强制固定高度 */
+            height: 48px !important; /* 强制固定高度 */
+            min-height: 48px !important;
             border-radius: 8px;
             border: 1px solid #f0f0f0;
             background-color: #fff;
@@ -33,12 +41,14 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            /* 关键：防止文字换行导致按钮变形 */
-            white-space: nowrap; 
+            white-space: nowrap; /* 禁止换行 */
             overflow: hidden;
             text-overflow: ellipsis;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        div[data-testid="column"]:not(:first-child) .stButton button:hover {
+        div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
             background-color: #f8faff;
@@ -46,37 +56,32 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 2. 左侧 Explore Tags 按钮 (仿 Download 链接风格) --- */
-        /* 专门定位左侧栏内的按钮 */
-        [data-testid="column"]:nth-of-type(1) .stButton button {
-            border: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            color: #666 !important; /* 灰色字体 */
-            text-align: left !important;
-            padding: 4px 0px !important;
-            margin: 0px !important;
-            height: auto !important;
-            min-height: 0px !important;
-            font-weight: 600 !important; /* 稍微加粗 */
-            font-size: 11px !important; /* 小字体 */
-            line-height: 1.5 !important;
+        /* --- 2. Tag 纯文本链接样式 (仿 Download) --- */
+        .tag-link {
+            display: inline-block;
+            color: #999; /* 灰色字体 */
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            margin-right: 12px;
+            margin-bottom: 8px;
+            font-family: "Helvetica Neue", sans-serif;
+            transition: color 0.2s;
+            cursor: pointer;
         }
-        [data-testid="column"]:nth-of-type(1) .stButton button:hover {
-            color: #002FA7 !important; /* 悬停变克莱因蓝 */
-            background: transparent !important;
-            transform: translateX(2px) !important; /* 悬停轻微右移 */
+        .tag-link:hover {
+            color: #333; /* 悬停变深 */
+            text-decoration: underline;
         }
-        
-        /* Pinterest 按钮保持原样 */
-        .pinterest-btn {
-            display: inline-block; text-decoration: none; background-color: #E60023;
-            color: white !important; padding: 6px 12px; border-radius: 20px;
-            font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
+        /* Tag 容器 */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
         }
-        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
 
-        /* --- 字体系统 --- */
+        /* --- 字体与标题 --- */
         .main-title {
             font-family: "PingFang SC", "Helvetica Neue", sans-serif;
             font-size: 3.2em; color: #111; text-align: center; 
@@ -86,17 +91,34 @@ def local_css():
             text-align: center; color: #888; font-size: 0.9em; 
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
+        
+        /* 分类标题 (增加固定高度以保证对齐) */
         .category-header {
-            text-align: center; font-size: 12px; color: #999; font-weight: 700;
-            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
+            text-align: center; 
+            font-size: 12px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1px; 
+            margin-bottom: 15px; 
+            text-transform: uppercase;
+            border-bottom: 2px solid #f0f0f0; 
+            padding-bottom: 8px; 
+            display: block;
+            height: 25px; /* 强制高度，确保下方按钮起始线对齐 */
+            line-height: 16px;
         }
 
-        /* --- 图片瀑布流 --- */
+        /* --- 图片与 Pinterest --- */
         div[data-testid="stImage"] img {
             height: 450px !important; object-fit: cover !important; 
             border-radius: 8px !important; width: 100% !important;
         }
+        .pinterest-btn {
+            display: inline-block; text-decoration: none; background-color: #E60023;
+            color: white !important; padding: 6px 12px; border-radius: 20px;
+            font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
+        }
+        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
         .source-badge {
             font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
             border: 1px solid #eee; padding: 1px 4px; border-radius: 3px;
@@ -142,7 +164,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE TAGS ---
+    # --- ✨ NICHE TAGS (Link Mode) ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -267,6 +289,7 @@ with st.container():
 
     def create_grid(column, title, emoji, items):
         with column:
+            # 标题增加 fixed height CSS class
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
             sc1, sc2 = st.columns(2)
             for i, (label, val) in enumerate(items):
@@ -320,32 +343,26 @@ if target_query:
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- Explore More Aesthetics (无边框 Tag 样式) ---
+        # --- ✨ Explore More Aesthetics (纯HTML链接模式) ---
         st.markdown("---")
-        st.markdown("### ✨ Explore More Aesthetics")
+        st.markdown("### ✨ Explore Aesthetics")
         
-        # 更新了带 Emoji 的标签
         soul_tags = [
             "🫧 #FrutigerAero", "👁️ #Dreamcore", "☀️ #Solarpunk", "🧚‍♀️ #AcidPixie", 
             "📜 #DarkAcademia", "🗿 #Vaporwave", "🚪 #LiminalSpace", "📺 #GlitchCore",
             "🍄 #Bioluminescence", "🌈 #Chromatic", "📸 #Knolling", "🏛️ #LightAcademia"
         ]
         
-        for i in range(0, len(soul_tags), 2):
-            tc1, tc2 = st.columns(2)
-            # 辅助函数：清洗 Emoji 获取纯文本关键词
-            def clean_tag(t): return t.split(" ")[-1].replace("#", "").lower()
-
-            tag1 = soul_tags[i]
-            if tc1.button(tag1, key=f"t_{tag1}"):
-                st.session_state.search_query = clean_tag(tag1)
-                st.rerun()
-            
-            if i + 1 < len(soul_tags):
-                tag2 = soul_tags[i+1]
-                if tc2.button(tag2, key=f"t_{tag2}"):
-                    st.session_state.search_query = clean_tag(tag2)
-                    st.rerun()
+        # 构造 HTML 链接云 (点击刷新页面带参数)
+        tags_html = "<div class='tag-container'>"
+        for tag in soul_tags:
+            # 提取纯净的 query 词 (去除Emoji和#)
+            clean_tag = tag.split("#")[-1] 
+            # target="_self" 强制在当前页打开，触发 st.query_params 读取
+            tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link'>{tag}</a>"
+        tags_html += "</div>"
+        
+        st.markdown(tags_html, unsafe_allow_html=True)
 
     # --- 右侧图片 ---
     with col_right:
