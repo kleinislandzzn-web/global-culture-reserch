@@ -10,18 +10,16 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (对齐、字体、排版)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 1. 布局与对齐 --- */
-        /* 搜索栏横向对齐微调 */
+        /* --- 布局与对齐 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
         div[data-testid="column"] [data-testid="stRadio"] { margin-top: 8px; }
 
-        /* --- 2. 按钮样式 --- */
-        /* 基础胶囊按钮 */
+        /* --- 按钮样式 --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             min-height: 45px;
@@ -41,7 +39,7 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 3. 字体系统 --- */
+        /* --- 字体系统 --- */
         .main-title {
             font-family: "PingFang SC", "Helvetica Neue", sans-serif;
             font-size: 3.2em; color: #111; text-align: center; 
@@ -51,34 +49,23 @@ def local_css():
             text-align: center; color: #888; font-size: 0.9em; 
             margin-bottom: 45px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
-        
-        /* 分类标题样式 (强制居中) */
         .category-header {
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 8px;
-            display: block; /* 块级元素确保占满宽度 */
+            text-align: center; font-size: 12px; color: #999; font-weight: 700;
+            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
+            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
         }
 
-        /* --- 4. 图片瀑布流 --- */
+        /* --- 图片瀑布流 --- */
         div[data-testid="stImage"] img {
             height: 450px !important; object-fit: cover !important; 
             border-radius: 8px !important; width: 100% !important;
         }
 
-        /* --- 5. 组件细节 --- */
-        /* 克莱因蓝 Radio */
+        /* --- 组件细节 --- */
         div[role="radiogroup"] > label > div:first-child { background-color: #f0f2f6; border: 1px solid #dce0e6; }
         div[role="radiogroup"] > label[data-baseweb="radio"] > div:first-child {
             background-color: #002FA7 !important; border-color: #002FA7 !important;
         }
-        /* Pinterest 按钮 */
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
             color: white !important; padding: 8px 15px; border-radius: 20px;
@@ -91,7 +78,7 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典 (Soul/Higgsfield 风格库)
+# 3. 视觉优化字典 (含 Niche Aesthetics)
 # ==========================================
 VISUAL_DICT = {
     # --- 🔥 TRENDING ---
@@ -126,7 +113,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE (保留字典定义，支持手动搜索) ---
+    # --- ✨ NICHE / SOUL AESTHETICS (新潮词汇) ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -222,35 +209,53 @@ if 'search_query' not in st.session_state:
 
 # --- 1. 核心分类网格 (4列布局) ---
 with st.container():
-    # 使用 4 列，Trending 放第一个
     c1, c2, c3, c4 = st.columns(4, gap="medium")
 
     def create_grid(column, title, emoji, items):
         with column:
-            # 自定义居中标题
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            # 内部 2x3 布局
             sc1, sc2 = st.columns(2)
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
+                # 按钮显示 Label (含 Emoji)，点击传值 Val
                 if target.button(label, key=f"btn_{val}_{i}"):
                     st.session_state.search_query = val
                     st.rerun()
 
-    # 数据定义
-    trending = [("Retro Futurism", "retro futurism"), ("Old Money", "old money"), ("Y2K", "y2k"), ("Cottagecore", "cottagecore"), ("Gorpcore", "gorpcore"), ("Mob Wife", "mob wife")]
-    fashion = [("Kimono", "kimono"), ("Hanfu", "hanfu"), ("Sari", "sari"), ("Qipao", "qipao"), ("Kilt", "kilt"), ("Flamenco", "flamenco")]
-    arch = [("Bauhaus", "bauhaus"), ("Gothic", "gothic"), ("Santorini", "santorini"), ("Brutalist", "brutalist"), ("Pagoda", "pagoda"), ("Art Deco", "art deco")]
-    culture = [("K-Pop", "k-pop"), ("Cyberpunk", "cyberpunk"), ("Zen", "zen"), ("Hollywood", "hollywood"), ("Bollywood", "bollywood"), ("Steampunk", "steampunk")]
+    # 数据定义 (Emoji 已补全)
+    trending = [("🚀 Retro Futurism", "retro futurism"), ("💸 Old Money", "old money"), ("💿 Y2K", "y2k"), ("🏡 Cottagecore", "cottagecore"), ("🧗 Gorpcore", "gorpcore"), ("🐆 Mob Wife", "mob wife")]
+    fashion = [("👘 Kimono", "kimono"), ("👗 Hanfu", "hanfu"), ("🧣 Sari", "sari"), ("🎋 Qipao", "qipao"), ("🎼 Kilt", "kilt"), ("💃 Flamenco", "flamenco")]
+    arch = [("🏢 Bauhaus", "bauhaus"), ("⛪ Gothic", "gothic"), ("🌊 Santorini", "santorini"), ("🧱 Brutalist", "brutalist"), ("⛩️ Pagoda", "pagoda"), ("🗽 Art Deco", "art deco")]
+    culture = [("🎤 K-Pop", "k-pop"), ("🤖 Cyberpunk", "cyberpunk"), ("🌿 Zen", "zen"), ("🎬 Hollywood", "hollywood"), ("💃 Bollywood", "bollywood"), ("⚙️ Steampunk", "steampunk")]
 
     create_grid(c1, "TRENDING", "🔥", trending)
     create_grid(c2, "LOCAL FASHION", "👘", fashion)
     create_grid(c3, "ARCHITECTURE", "🏛️", arch)
     create_grid(c4, "POP CULTURE", "🎨", culture)
 
+# --- 2. 灵感探索词云 (Expander) ---
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
+    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
+    
+    # 灵感词云 (Tag Cloud)
+    soul_tags = [
+        "Frutiger Aero", "Dreamcore", "Solarpunk", "Acid Pixie", 
+        "Dark Academia", "Vaporwave", "Liminal Space", "Glitch Core",
+        "Bioluminescence", "Chromatic", "Knolling", "Light Academia"
+    ]
+    
+    # 6列布局显示小标签
+    t_cols = st.columns(6) 
+    for i, tag in enumerate(soul_tags):
+        with t_cols[i % 6]:
+            if st.button(tag, key=f"soul_{tag}"):
+                st.session_state.search_query = tag.lower()
+                st.rerun()
+
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 搜索栏与设置 ---
+# --- 3. 搜索栏与设置 ---
 c_search, c_opt, c_source = st.columns([3, 1, 1])
 
 with c_search:
@@ -263,7 +268,7 @@ with c_opt:
 with c_source:
     source = st.radio("Src", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
 
-# --- 3. 结果渲染 ---
+# --- 4. 结果渲染 ---
 target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
 is_default = not st.session_state.search_query
 
