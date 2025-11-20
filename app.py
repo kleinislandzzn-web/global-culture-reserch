@@ -19,10 +19,13 @@ def local_css():
         /* --- 布局与对齐 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 全局按钮样式 (主要针对顶部分类) --- */
-        div[data-testid="column"] .stButton button {
+        /* --- 1. 主分类按钮 (防变形、永久对齐) --- */
+        /* 只针对右侧大区域的按钮，不影响左侧 Tag */
+        /* 使用 nth-of-type 排除左侧栏 */
+        div[data-testid="column"]:not(:first-child) .stButton button {
             width: 100%;
             min-height: 45px;
+            max-height: 45px; /* 强制固定高度 */
             border-radius: 8px;
             border: 1px solid #f0f0f0;
             background-color: #fff;
@@ -30,15 +33,48 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            /* 关键：防止文字换行导致按钮变形 */
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        div[data-testid="column"] .stButton button:hover {
+        div[data-testid="column"]:not(:first-child) .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
             background-color: #f8faff;
             transform: translateY(-2px);
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
+
+        /* --- 2. 左侧 Explore Tags 按钮 (仿 Download 链接风格) --- */
+        /* 专门定位左侧栏内的按钮 */
+        [data-testid="column"]:nth-of-type(1) .stButton button {
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            color: #666 !important; /* 灰色字体 */
+            text-align: left !important;
+            padding: 4px 0px !important;
+            margin: 0px !important;
+            height: auto !important;
+            min-height: 0px !important;
+            font-weight: 600 !important; /* 稍微加粗 */
+            font-size: 11px !important; /* 小字体 */
+            line-height: 1.5 !important;
+        }
+        [data-testid="column"]:nth-of-type(1) .stButton button:hover {
+            color: #002FA7 !important; /* 悬停变克莱因蓝 */
+            background: transparent !important;
+            transform: translateX(2px) !important; /* 悬停轻微右移 */
+        }
+        
+        /* Pinterest 按钮保持原样 */
+        .pinterest-btn {
+            display: inline-block; text-decoration: none; background-color: #E60023;
+            color: white !important; padding: 6px 12px; border-radius: 20px;
+            font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
+        }
+        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
 
         /* --- 字体系统 --- */
         .main-title {
@@ -61,28 +97,6 @@ def local_css():
             height: 450px !important; object-fit: cover !important; 
             border-radius: 8px !important; width: 100% !important;
         }
-
-        /* --- Pinterest 按钮 (精致版) --- */
-        .pinterest-btn {
-            display: inline-block; /* 改回行内块，变小 */
-            text-decoration: none; 
-            background-color: #E60023;
-            color: white !important; 
-            padding: 6px 12px; /* 减小内边距 */
-            border-radius: 20px; /* 变成圆角胶囊 */
-            font-weight: bold; 
-            font-size: 11px; 
-            margin-top: 8px; 
-            transition: all 0.3s;
-            box-shadow: 0 2px 4px rgba(230, 0, 35, 0.2);
-        }
-        .pinterest-btn:hover { 
-            background-color: #ad081b; 
-            transform: translateY(-1px); 
-            box-shadow: 0 4px 8px rgba(230, 0, 35, 0.3);
-        }
-
-        /* --- 来源标签样式 --- */
         .source-badge {
             font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
             border: 1px solid #eee; padding: 1px 4px; border-radius: 3px;
@@ -144,7 +158,7 @@ VISUAL_DICT = {
 }
 
 # ==========================================
-# 4. 混合搜图引擎逻辑 (9 Pexels + 9 Unsplash)
+# 4. 混合搜图引擎逻辑
 # ==========================================
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
@@ -278,7 +292,7 @@ target_query = st.session_state.search_query if st.session_state.search_query el
 is_default = not st.session_state.search_query
 
 if target_query:
-    with st.spinner(f"Curating visual mix from Pexels & Unsplash..."):
+    with st.spinner(f"Curating visual mix..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
@@ -306,58 +320,34 @@ if target_query:
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- Explore More Aesthetics (纯文本 Tag 样式) ---
+        # --- Explore More Aesthetics (无边框 Tag 样式) ---
         st.markdown("---")
         st.markdown("### ✨ Explore More Aesthetics")
         
+        # 更新了带 Emoji 的标签
         soul_tags = [
-            "#FrutigerAero", "#Dreamcore", "#Solarpunk", "#AcidPixie", 
-            "#DarkAcademia", "#Vaporwave", "#LiminalSpace", "#GlitchCore",
-            "#Bioluminescence", "#Chromatic", "#Knolling", "#LightAcademia"
+            "🫧 #FrutigerAero", "👁️ #Dreamcore", "☀️ #Solarpunk", "🧚‍♀️ #AcidPixie", 
+            "📜 #DarkAcademia", "🗿 #Vaporwave", "🚪 #LiminalSpace", "📺 #GlitchCore",
+            "🍄 #Bioluminescence", "🌈 #Chromatic", "📸 #Knolling", "🏛️ #LightAcademia"
         ]
         
-        # 注入专门针对左侧 Tag 区域的 CSS hack
-        # 使用多重嵌套选择器来提高权重，强制覆盖全局按钮样式
-        st.markdown("""
-        <style>
-            /* 针对左侧 Tag 的特殊样式覆盖 */
-            /* 使用 nth-of-type 或结构选择器来定位左侧栏内的按钮 */
-            [data-testid="column"]:nth-of-type(1) [data-testid="column"] button {
-                border: none !important;
-                background: transparent !important;
-                box-shadow: none !important;
-                color: #999 !important;
-                text-align: left !important;
-                padding: 0px !important;
-                margin-bottom: 2px !important;
-                height: auto !important;
-                min-height: 24px !important;
-                font-weight: 400 !important;
-            }
-            [data-testid="column"]:nth-of-type(1) [data-testid="column"] button:hover {
-                color: #333 !important;
-                text-decoration: underline !important;
-                background: transparent !important;
-                transform: none !important;
-                border: none !important;
-            }
-            /* 恢复左侧上方 Pinterest 按钮不受影响 (它是 a 标签，不是 button) */
-        </style>
-        """, unsafe_allow_html=True)
-
         for i in range(0, len(soul_tags), 2):
             tc1, tc2 = st.columns(2)
+            # 辅助函数：清洗 Emoji 获取纯文本关键词
+            def clean_tag(t): return t.split(" ")[-1].replace("#", "").lower()
+
             tag1 = soul_tags[i]
             if tc1.button(tag1, key=f"t_{tag1}"):
-                st.session_state.search_query = tag1.replace("#", "").replace(" ", " ").lower()
+                st.session_state.search_query = clean_tag(tag1)
                 st.rerun()
+            
             if i + 1 < len(soul_tags):
                 tag2 = soul_tags[i+1]
                 if tc2.button(tag2, key=f"t_{tag2}"):
-                    st.session_state.search_query = tag2.replace("#", "").replace(" ", " ").lower()
+                    st.session_state.search_query = clean_tag(tag2)
                     st.rerun()
 
-    # --- 右侧图片 (混合 18 张) ---
+    # --- 右侧图片 ---
     with col_right:
         st.markdown(f"### 🖼️ Visual Board (Mixed Sources)")
         if error_msg: st.warning(error_msg)
