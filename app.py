@@ -63,7 +63,7 @@ def local_css():
             text-transform: uppercase;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 8px;
-            display: block;
+            display: block; /* 块级元素确保占满宽度 */
         }
 
         /* --- 4. 图片瀑布流 --- */
@@ -126,7 +126,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE / SOUL / HIGGSFIELD AESTHETICS ---
+    # --- ✨ NICHE (保留字典定义，支持手动搜索) ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -248,10 +248,71 @@ with st.container():
     create_grid(c3, "ARCHITECTURE", "🏛️", arch)
     create_grid(c4, "POP CULTURE", "🎨", culture)
 
-# --- 2. 灵感探索 (More Button) ---
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
-    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
+st.markdown("<br>", unsafe_allow_html=True)
+
+# --- 2. 搜索栏与设置 ---
+c_search, c_opt, c_source = st.columns([3, 1, 1])
+
+with c_search:
+    user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type concept...", label_visibility="collapsed")
+    if user_input: st.session_state.search_query = user_input
+
+with c_opt:
+    uhd_mode = st.checkbox("💎 Ultra HD", value=False)
+
+with c_source:
+    source = st.radio("Src", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
+
+# --- 3. 结果渲染 ---
+target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
+is_default = not st.session_state.search_query
+
+if target_query:
+    with st.spinner(f"Generating moodboard via {source}..."):
+        wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
+        photos, error_msg, optimized_term, is_opt = get_visuals(source, target_query, uhd_mode)
     
-    # 灵感词云 (Tag Cloud)
-    soul_tags =
+    if is_default:
+        st.markdown(f"### 🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span>", unsafe_allow_html=True)
+    elif is_opt:
+        st.success(f"🎨 **Moodboard Optimized:** '{target_query}' ➔ `{optimized_term}`")
+    else:
+        st.caption(f"🔍 Result: `{optimized_term}`")
+
+    col_left, col_right = st.columns([1, 2.5])
+    
+    with col_left:
+        st.markdown("### 📖 Context")
+        st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
+        if wiki_text:
+            st.markdown(f"{wiki_text}")
+            st.markdown(f"[👉 Read on Wikipedia]({wiki_link})")
+        else:
+            st.info("Visual exploration mode.") if is_default else st.warning("No context found.")
+            
+        st.markdown("---")
+        st.markdown("### 📌 External")
+        pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
+        st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
+
+    with col_right:
+        st.markdown(f"### 🖼️ Visual Board ({source})")
+        if error_msg: st.error(error_msg)
+        elif photos:
+            img_cols = st.columns(3)
+            for idx, photo in enumerate(photos):
+                with img_cols[idx % 3]:
+                    st.image(photo['src'], use_container_width=True)
+                    st.markdown(f"""
+                        <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
+                                <span style="color:#aaa; background:#f4f4f4; padding:2px 6px; border-radius:4px;">{photo.get('res','HD')}</span>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.warning("No images > 1500px found." if uhd_mode else "No visuals found.")
+
+st.markdown("---")
+st.markdown("<div class='footer'>Powered by Streamlit | Pexels & Unsplash<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
