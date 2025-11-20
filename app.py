@@ -7,9 +7,7 @@ from itertools import zip_longest
 # ==========================================
 # 0. URL 参数处理 (用于支持 Tag 链接跳转)
 # ==========================================
-# 如果 URL 中包含 ?q=xxx，优先将其作为搜索词
 if "q" in st.query_params:
-    # 获取参数并解码
     param_q = st.query_params["q"]
     if param_q:
         st.session_state.search_query = param_q
@@ -21,7 +19,7 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (对齐修复 + Tag样式重构)
+# 2. CSS 样式 (Tag 去下划线版)
 # ==========================================
 def local_css():
     st.markdown("""
@@ -32,7 +30,7 @@ def local_css():
         /* --- 1. 主分类按钮 (绝对对齐修复) --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
-            height: 48px !important; /* 强制固定高度 */
+            height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
             border: 1px solid #f0f0f0;
@@ -41,7 +39,7 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            white-space: nowrap; /* 禁止换行 */
+            white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
             display: flex;
@@ -56,11 +54,11 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 2. Tag 纯文本链接样式 (仿 Download) --- */
+        /* --- 2. Tag 纯文本链接样式 (无下划线版) --- */
         .tag-link {
             display: inline-block;
-            color: #999; /* 灰色字体 */
-            text-decoration: none;
+            color: #999; /* 默认浅灰 */
+            text-decoration: none !important; /* 强制去除下划线 */
             font-size: 12px;
             font-weight: 500;
             margin-right: 12px;
@@ -68,11 +66,14 @@ def local_css():
             font-family: "Helvetica Neue", sans-serif;
             transition: color 0.2s;
             cursor: pointer;
+            border-bottom: none !important; /* 再次确保无底边框 */
         }
         .tag-link:hover {
-            color: #333; /* 悬停变深 */
-            text-decoration: underline;
+            color: #333; /* 悬停变深灰 */
+            text-decoration: none !important; /* 悬停也无下划线 */
+            opacity: 0.8;
         }
+        
         /* Tag 容器 */
         .tag-container {
             display: flex;
@@ -92,20 +93,12 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 (增加固定高度以保证对齐) */
+        /* 分类标题 */
         .category-header {
-            text-align: center; 
-            font-size: 12px; 
-            color: #999; 
-            font-weight: 700;
-            letter-spacing: 1px; 
-            margin-bottom: 15px; 
-            text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; 
-            padding-bottom: 8px; 
-            display: block;
-            height: 25px; /* 强制高度，确保下方按钮起始线对齐 */
-            line-height: 16px;
+            text-align: center; font-size: 12px; color: #999; font-weight: 700;
+            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
+            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
+            height: 25px; line-height: 16px;
         }
 
         /* --- 图片与 Pinterest --- */
@@ -164,7 +157,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE TAGS (Link Mode) ---
+    # --- ✨ NICHE TAGS ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -289,7 +282,6 @@ with st.container():
 
     def create_grid(column, title, emoji, items):
         with column:
-            # 标题增加 fixed height CSS class
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
             sc1, sc2 = st.columns(2)
             for i, (label, val) in enumerate(items):
@@ -343,7 +335,7 @@ if target_query:
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- ✨ Explore More Aesthetics (纯HTML链接模式) ---
+        # --- ✨ Explore Aesthetics (纯HTML链接) ---
         st.markdown("---")
         st.markdown("### ✨ Explore Aesthetics")
         
@@ -353,13 +345,11 @@ if target_query:
             "🍄 #Bioluminescence", "🌈 #Chromatic", "📸 #Knolling", "🏛️ #LightAcademia"
         ]
         
-        # 构造 HTML 链接云 (点击刷新页面带参数)
         tags_html = "<div class='tag-container'>"
         for tag in soul_tags:
-            # 提取纯净的 query 词 (去除Emoji和#)
             clean_tag = tag.split("#")[-1] 
-            # target="_self" 强制在当前页打开，触发 st.query_params 读取
-            tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link'>{tag}</a>"
+            # text-decoration: none style inline 作为双重保险
+            tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link' style='text-decoration:none;'>{tag}</a>"
         tags_html += "</div>"
         
         st.markdown(tags_html, unsafe_allow_html=True)
