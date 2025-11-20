@@ -19,8 +19,11 @@ def local_css():
         /* --- 布局与对齐 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 按钮样式 (顶部主分类) --- */
-        /* 默认按钮样式，用于顶部的胶囊按钮 */
+        /* --- 顶部主分类按钮 (有边框胶囊状) --- */
+        /* 这里我们利用 Streamlit 的层级特征，只针对顶部大分类区域的按钮应用样式 */
+        /* 注意：Streamlit CSS 很难精确区分不同区域的按钮，这里应用通用样式，
+           然后为 Tag 区域应用特殊 CSS Hack */
+        
         div[data-testid="column"] .stButton button {
             width: 100%;
             min-height: 45px;
@@ -144,7 +147,7 @@ def get_visuals(user_query, uhd_mode):
     else:
         search_term = f"{user_query} aesthetic"
 
-    # 请求更多图片以确保足够筛选 (比如请求 15 张)
+    # 请求更多图片以确保足够筛选
     fetch_limit = 15 
     
     p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_limit)
@@ -196,4 +199,180 @@ def _fetch_unsplash(query, uhd_mode, limit):
             filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
             return [{
                 "src": p['urls']['regular'], "url": p['links']['html'], 
-                "alt": p['alt_description'] or p['description']
+                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}",
+                "source": "Unsplash"
+            } for p in filtered], None
+        elif res.status_code == 403: return [], "Limit Reached"
+        return [], f"Status {res.status_code}"
+    except Exception as e:
+        return [], str(e)
+
+def get_wiki_summary(query):
+    try:
+        wikipedia.set_lang("en")
+        res = wikipedia.search(query)
+        if res:
+            page = wikipedia.page(res[0], auto_suggest=False)
+            return page.summary[0:600] + "...", page.url, res[0]
+        return None, "#", None
+    except: return None, "#", None
+
+# ==========================================
+# 5. 页面主程序
+# ==========================================
+st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
+local_css()
+
+st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
+
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
+
+# --- 1. 搜索栏与设置 ---
+# 布局：2(Spacer) : 4(Search) : 1(UHD) : 2(Spacer)
+c_sp1, c_search, c_opt, c_sp2 = st.columns([2, 4, 1, 2])
+
+with c_search:
+    user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type concept...", label_visibility="collapsed")
+    if user_input: st.session_state.search_query = user_input
+
+with c_opt:
+    uhd_mode = st.checkbox("💎 Ultra HD", value=False)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# --- 2. 核心分类网格 (4列布局) ---
+with st.container():
+    c1, c2, c3, c4 = st.columns(4, gap="medium")
+
+    def create_grid(column, title, emoji, items):
+        with column:
+            st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
+            sc1, sc2 = st.columns(2)
+            for i, (label, val) in enumerate(items):
+                target = sc1 if i % 2 == 0 else sc2
+                if target.button(label, key=f"btn_{val}_{i}"):
+                    st.session_state.search_query = val
+                    st.rerun()
+
+    trending = [("🚀 Retro Futurism", "retro futurism"), ("💸 Old Money", "old money"), ("💿 Y2K", "y2k"), ("🏡 Cottagecore", "cottagecore"), ("🧗 Gorpcore", "gorpcore"), ("🐆 Mob Wife", "mob wife")]
+    fashion = [("👘 Kimono", "kimono"), ("👗 Hanfu", "hanfu"), ("🧣 Sari", "sari"), ("🎋 Qipao", "qipao"), ("🎼 Kilt", "kilt"), ("💃 Flamenco", "flamenco")]
+    arch = [("🏢 Bauhaus", "bauhaus"), ("⛪ Gothic", "gothic"), ("🌊 Santorini", "santorini"), ("🧱 Brutalist", "brutalist"), ("⛩️ Pagoda", "pagoda"), ("🗽 Art Deco", "art deco")]
+    culture = [("🎤 K-Pop", "k-pop"), ("🤖 Cyberpunk", "cyberpunk"), ("🌿 Zen", "zen"), ("🎬 Hollywood", "hollywood"), ("💃 Bollywood", "bollywood"), ("⚙️ Steampunk", "steampunk")]
+
+    create_grid(c1, "TRENDING", "🔥", trending)
+    create_grid(c2, "LOCAL FASHION", "👘", fashion)
+    create_grid(c3, "ARCHITECTURE", "🏛️", arch)
+    create_grid(c4, "POP CULTURE", "🎨", culture)
+
+st.markdown("<hr>", unsafe_allow_html=True)
+
+# --- 3. 结果渲染 ---
+target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
+is_default = not st.session_state.search_query
+
+if target_query:
+    # 统一搜图
+    with st.spinner(f"Curating visual mix from Pexels & Unsplash..."):
+        wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
+        photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
+    
+    if is_default:
+        st.markdown(f"### 🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span>", unsafe_allow_html=True)
+    elif is_opt:
+        st.success(f"🎨 **Moodboard Optimized:** '{target_query}' ➔ `{optimized_term}`")
+    else:
+        st.caption(f"🔍 Result: `{optimized_term}`")
+
+    col_left, col_right = st.columns([1, 2.5])
+    
+    # --- 左侧信息栏 ---
+    with col_left:
+        st.markdown("### 📖 Context")
+        st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
+        if wiki_text:
+            st.markdown(f"{wiki_text}")
+            st.markdown(f"[👉 Read on Wikipedia]({wiki_link})")
+        else:
+            st.info("Visual exploration mode.") if is_default else st.warning("No context found.")
+            
+        # --- External ---
+        st.markdown("---")
+        st.markdown("### 📌 External")
+        pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
+        st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
+
+        # --- Explore More Aesthetics (Tag 区域) ---
+        st.markdown("---")
+        st.markdown("### ✨ Explore More Aesthetics")
+        
+        soul_tags = [
+            "#FrutigerAero", "#Dreamcore", "#Solarpunk", "#AcidPixie", 
+            "#DarkAcademia", "#Vaporwave", "#LiminalSpace", "#GlitchCore",
+            "#Bioluminescence", "#Chromatic", "#Knolling", "#LightAcademia"
+        ]
+        
+        # 注入 CSS 使得该区域按钮看起来像文本
+        st.markdown("""
+        <style>
+            /* 定制 Tag 按钮样式: 无边框，灰色文字 */
+            div[data-testid="column"] div[data-testid="column"] .stButton button {
+                border: none !important;
+                background: transparent !important;
+                color: #888 !important;
+                text-align: left !important;
+                padding-left: 0 !important;
+                box-shadow: none !important;
+                font-weight: 400 !important;
+                font-size: 12px !important;
+                min-height: 20px !important;
+                height: auto !important;
+            }
+            div[data-testid="column"] div[data-testid="column"] .stButton button:hover {
+                color: #333 !important;
+                text-decoration: underline !important;
+                background: transparent !important;
+                transform: none !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+
+        for i in range(0, len(soul_tags), 2):
+            tc1, tc2 = st.columns(2)
+            tag1 = soul_tags[i]
+            if tc1.button(tag1, key=f"t_{tag1}"):
+                st.session_state.search_query = tag1.replace("#", "").replace(" ", " ").lower()
+                st.rerun()
+            if i + 1 < len(soul_tags):
+                tag2 = soul_tags[i+1]
+                if tc2.button(tag2, key=f"t_{tag2}"):
+                    st.session_state.search_query = tag2.replace("#", "").replace(" ", " ").lower()
+                    st.rerun()
+
+    # --- 右侧图片 (混合 18 张) ---
+    with col_right:
+        st.markdown(f"### 🖼️ Visual Board (Mixed Sources)")
+        if error_msg: st.warning(error_msg)
+        
+        if photos:
+            img_cols = st.columns(3)
+            for idx, photo in enumerate(photos):
+                with img_cols[idx % 3]:
+                    st.image(photo['src'], use_container_width=True)
+                    st.markdown(f"""
+                        <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
+                                <div>
+                                    <span class="source-badge">Via {photo['source']}</span>
+                                    <span style="color:#aaa; background:#f4f4f4; padding:1px 4px; border-radius:3px; font-size:9px; margin-left:4px;">{photo.get('res','HD')}</span>
+                                </div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+        else:
+            st.warning("No images > 1500px found." if uhd_mode else "No visuals found.")
+
+st.markdown("---")
+st.markdown("<div class='footer'>Powered by Streamlit | Pexels & Unsplash<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
