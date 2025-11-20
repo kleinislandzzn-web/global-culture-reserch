@@ -16,6 +16,7 @@ def local_css():
     st.markdown("""
     <style>
         /* --- 布局与对齐 --- */
+        /* 搜索栏组件下移对齐 */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
         div[data-testid="column"] [data-testid="stRadio"] { margin-top: 8px; }
 
@@ -47,7 +48,7 @@ def local_css():
         }
         .sub-title {
             text-align: center; color: #888; font-size: 0.9em; 
-            margin-bottom: 45px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
+            margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         .category-header {
             text-align: center; font-size: 12px; color: #999; font-weight: 700;
@@ -78,7 +79,7 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典 (含 Niche Aesthetics)
+# 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
     # --- 🔥 TRENDING ---
@@ -113,7 +114,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE / SOUL AESTHETICS (新潮词汇) ---
+    # --- ✨ NICHE ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -207,56 +208,10 @@ st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_a
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
-# --- 1. 核心分类网格 (4列布局) ---
-with st.container():
-    c1, c2, c3, c4 = st.columns(4, gap="medium")
-
-    def create_grid(column, title, emoji, items):
-        with column:
-            st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2)
-            for i, (label, val) in enumerate(items):
-                target = sc1 if i % 2 == 0 else sc2
-                # 按钮显示 Label (含 Emoji)，点击传值 Val
-                if target.button(label, key=f"btn_{val}_{i}"):
-                    st.session_state.search_query = val
-                    st.rerun()
-
-    # 数据定义 (Emoji 已补全)
-    trending = [("🚀 Retro Futurism", "retro futurism"), ("💸 Old Money", "old money"), ("💿 Y2K", "y2k"), ("🏡 Cottagecore", "cottagecore"), ("🧗 Gorpcore", "gorpcore"), ("🐆 Mob Wife", "mob wife")]
-    fashion = [("👘 Kimono", "kimono"), ("👗 Hanfu", "hanfu"), ("🧣 Sari", "sari"), ("🎋 Qipao", "qipao"), ("🎼 Kilt", "kilt"), ("💃 Flamenco", "flamenco")]
-    arch = [("🏢 Bauhaus", "bauhaus"), ("⛪ Gothic", "gothic"), ("🌊 Santorini", "santorini"), ("🧱 Brutalist", "brutalist"), ("⛩️ Pagoda", "pagoda"), ("🗽 Art Deco", "art deco")]
-    culture = [("🎤 K-Pop", "k-pop"), ("🤖 Cyberpunk", "cyberpunk"), ("🌿 Zen", "zen"), ("🎬 Hollywood", "hollywood"), ("💃 Bollywood", "bollywood"), ("⚙️ Steampunk", "steampunk")]
-
-    create_grid(c1, "TRENDING", "🔥", trending)
-    create_grid(c2, "LOCAL FASHION", "👘", fashion)
-    create_grid(c3, "ARCHITECTURE", "🏛️", arch)
-    create_grid(c4, "POP CULTURE", "🎨", culture)
-
-# --- 2. 灵感探索词云 (Expander) ---
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
-    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
-    
-    # 灵感词云 (Tag Cloud)
-    soul_tags = [
-        "Frutiger Aero", "Dreamcore", "Solarpunk", "Acid Pixie", 
-        "Dark Academia", "Vaporwave", "Liminal Space", "Glitch Core",
-        "Bioluminescence", "Chromatic", "Knolling", "Light Academia"
-    ]
-    
-    # 6列布局显示小标签
-    t_cols = st.columns(6) 
-    for i, tag in enumerate(soul_tags):
-        with t_cols[i % 6]:
-            if st.button(tag, key=f"soul_{tag}"):
-                st.session_state.search_query = tag.lower()
-                st.rerun()
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# --- 3. 搜索栏与设置 ---
-c_search, c_opt, c_source = st.columns([3, 1, 1])
+# --- 1. 搜索栏与设置 (移至顶部 & 居中缩短) ---
+# 使用 5 列布局：[空, 搜索, UHD, 图源, 空] 来实现缩短和居中
+# 比例建议: 1(Spacer) : 3(Search) : 1(UHD) : 1(Src) : 1(Spacer)
+c_spacer1, c_search, c_opt, c_source, c_spacer2 = st.columns([1, 3.5, 1, 1, 1])
 
 with c_search:
     user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type concept...", label_visibility="collapsed")
@@ -267,6 +222,50 @@ with c_opt:
 
 with c_source:
     source = st.radio("Src", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# --- 2. 核心分类网格 (4列布局) ---
+with st.container():
+    c1, c2, c3, c4 = st.columns(4, gap="medium")
+
+    def create_grid(column, title, emoji, items):
+        with column:
+            st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
+            sc1, sc2 = st.columns(2)
+            for i, (label, val) in enumerate(items):
+                target = sc1 if i % 2 == 0 else sc2
+                if target.button(label, key=f"btn_{val}_{i}"):
+                    st.session_state.search_query = val
+                    st.rerun()
+
+    trending = [("🚀 Retro Futurism", "retro futurism"), ("💸 Old Money", "old money"), ("💿 Y2K", "y2k"), ("🏡 Cottagecore", "cottagecore"), ("🧗 Gorpcore", "gorpcore"), ("🐆 Mob Wife", "mob wife")]
+    fashion = [("👘 Kimono", "kimono"), ("👗 Hanfu", "hanfu"), ("🧣 Sari", "sari"), ("🎋 Qipao", "qipao"), ("🎼 Kilt", "kilt"), ("💃 Flamenco", "flamenco")]
+    arch = [("🏢 Bauhaus", "bauhaus"), ("⛪ Gothic", "gothic"), ("🌊 Santorini", "santorini"), ("🧱 Brutalist", "brutalist"), ("⛩️ Pagoda", "pagoda"), ("🗽 Art Deco", "art deco")]
+    culture = [("🎤 K-Pop", "k-pop"), ("🤖 Cyberpunk", "cyberpunk"), ("🌿 Zen", "zen"), ("🎬 Hollywood", "hollywood"), ("💃 Bollywood", "bollywood"), ("⚙️ Steampunk", "steampunk")]
+
+    create_grid(c1, "TRENDING", "🔥", trending)
+    create_grid(c2, "LOCAL FASHION", "👘", fashion)
+    create_grid(c3, "ARCHITECTURE", "🏛️", arch)
+    create_grid(c4, "POP CULTURE", "🎨", culture)
+
+# --- 3. 灵感探索 (Expander) ---
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
+    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
+    soul_tags = [
+        "Frutiger Aero", "Dreamcore", "Solarpunk", "Acid Pixie", 
+        "Dark Academia", "Vaporwave", "Liminal Space", "Glitch Core",
+        "Bioluminescence", "Chromatic", "Knolling", "Light Academia"
+    ]
+    t_cols = st.columns(6) 
+    for i, tag in enumerate(soul_tags):
+        with t_cols[i % 6]:
+            if st.button(tag, key=f"soul_{tag}"):
+                st.session_state.search_query = tag.lower()
+                st.rerun()
+
+st.markdown("<hr>", unsafe_allow_html=True)
 
 # --- 4. 结果渲染 ---
 target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
