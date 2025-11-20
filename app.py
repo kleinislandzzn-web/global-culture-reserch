@@ -3,13 +3,13 @@ import wikipedia
 import requests
 
 # ==========================================
-# 1. 配置区域 (API Keys)
+# 1. 配置区域 (API Keys 已预填)
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (微调：更像 Moodboard 的质感)
+# 2. CSS 样式 (Moodboard 风格)
 # ==========================================
 def local_css():
     st.markdown("""
@@ -18,10 +18,10 @@ def local_css():
         div[data-testid="column"] .stButton button {
             width: 100%;
             min-height: 60px;
-            border-radius: 12px; /* 圆角更大，更柔和 */
+            border-radius: 12px;
             border: 1px solid #f0f0f0;
             background-color: #ffffff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 增加轻微阴影，更有卡片感 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             transition: all 0.2s;
             font-size: 14px;
             color: #444;
@@ -52,7 +52,7 @@ def local_css():
             font-family: 'Helvetica Neue', sans-serif;
             font-weight: 300;
             letter-spacing: 1px;
-            text-transform: uppercase; /* 大写英文更显高级 */
+            text-transform: uppercase; 
         }
         /* 底部 */
         .footer {
@@ -96,23 +96,27 @@ VISUAL_DICT = {
 }
 
 # ==========================================
-# 4. 搜图引擎逻辑
+# 4. 搜图引擎逻辑 (⚠️已修复 BUG)
 # ==========================================
 def get_visuals(source, user_query, per_page=9):
     clean_query = user_query.lower().strip()
     is_optimized = False
     
-    # Moodboard 核心：通过字典优化，确保出来的是“氛围图”而不是“说明书图”
+    # 1. 确定搜索词
     if clean_query in VISUAL_DICT:
         search_term = VISUAL_DICT[clean_query]
         is_optimized = True
     else:
         search_term = f"{user_query} aesthetic"
 
+    # 2. 获取图片 (这里做了修复，先解压 photos 和 error)
     if source == "Pexels":
-        return _fetch_pexels(search_term, per_page), search_term, is_optimized
+        photos, error = _fetch_pexels(search_term, per_page)
     else:
-        return _fetch_unsplash(search_term, per_page), search_term, is_optimized
+        photos, error = _fetch_unsplash(search_term, per_page)
+        
+    # 3. 返回 4 个独立变量
+    return photos, error, search_term, is_optimized
 
 def _fetch_pexels(query, per_page):
     headers = {"Authorization": PEXELS_API_KEY}
@@ -144,7 +148,7 @@ def _fetch_unsplash(query, per_page):
                 })
             return formatted, None
         elif res.status_code == 403:
-            return [], "⚠️ Unsplash Limit Reached (Demo mode)"
+            return [], "⚠️ Unsplash Limit Reached (Demo mode limit 50/hr)"
         return [], f"Unsplash Error: {res.status_code}"
     except Exception as e:
         return [], str(e)
@@ -166,7 +170,7 @@ def get_wiki_summary(query):
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 local_css()
 
-# --- 标题区域：Moodboard 风格 ---
+# --- 标题区域 ---
 st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
 
@@ -200,7 +204,7 @@ st.markdown("<br>", unsafe_allow_html=True)
 # --- 搜索与设置区域 ---
 c_search, c_source = st.columns([3, 1])
 with c_search:
-    query = st.text_input("Search Input", value=st.session_state.search_query, placeholder="Type a concept to generate moodboard...", label_visibility="collapsed")
+    query = st.text_input("Search Input", value=st.session_state.search_query, placeholder="Type a concept (e.g. Neon, Temple) to generate moodboard...", label_visibility="collapsed")
 with c_source:
     source = st.radio("Visual Engine", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
     st.caption(f"Engine: {source}")
@@ -208,12 +212,12 @@ with c_source:
 # --- 结果展示 ---
 if query:
     st.session_state.search_query = query 
-    # 提示语变得更有“生成感”
+    
     with st.spinner(f"Curating visuals from {source}..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(query)
+        # 调用修复后的 get_visuals，现在它能正确返回4个值了
         photos, error_msg, optimized_term, is_opt = get_visuals(source, query)
     
-    # 提示框样式调整
     if is_opt:
         st.success(f"🎨 **Moodboard Optimized:** '{query}' ➔ `{optimized_term}`")
     else:
