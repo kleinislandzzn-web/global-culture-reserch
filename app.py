@@ -5,7 +5,7 @@ import random
 from itertools import zip_longest
 
 # ==========================================
-# 0. URL 参数处理 (用于支持 Tag 链接跳转)
+# 0. URL 参数处理
 # ==========================================
 if "q" in st.query_params:
     param_q = st.query_params["q"]
@@ -19,15 +19,15 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (Tag 去下划线版)
+# 2. CSS 样式 (对齐终极修正)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 布局组件微调 --- */
+        /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (绝对对齐修复) --- */
+        /* --- 1. 主分类按钮 (完美居中对齐) --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             height: 48px !important; 
@@ -39,12 +39,17 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
+            /* 核心对齐代码：Flexbox 双重居中 */
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            /* 防止文字换行 */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            /* 消除默认内边距干扰 */
+            padding: 0 10px !important;
+            margin: 0 auto !important;
         }
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
@@ -54,11 +59,11 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 2. Tag 纯文本链接样式 (无下划线版) --- */
+        /* --- 2. Tag 纯文本链接样式 --- */
         .tag-link {
             display: inline-block;
-            color: #999; /* 默认浅灰 */
-            text-decoration: none !important; /* 强制去除下划线 */
+            color: #999;
+            text-decoration: none !important;
             font-size: 12px;
             font-weight: 500;
             margin-right: 12px;
@@ -66,15 +71,12 @@ def local_css():
             font-family: "Helvetica Neue", sans-serif;
             transition: color 0.2s;
             cursor: pointer;
-            border-bottom: none !important; /* 再次确保无底边框 */
+            border-bottom: none !important;
         }
         .tag-link:hover {
-            color: #333; /* 悬停变深灰 */
-            text-decoration: none !important; /* 悬停也无下划线 */
+            color: #333;
             opacity: 0.8;
         }
-        
-        /* Tag 容器 */
         .tag-container {
             display: flex;
             flex-wrap: wrap;
@@ -93,15 +95,25 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 */
+        /* 分类标题 (对齐修正) */
         .category-header {
-            text-align: center; font-size: 12px; color: #999; font-weight: 700;
-            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
-            height: 25px; line-height: 16px;
+            text-align: center; 
+            font-size: 12px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1px; 
+            margin-bottom: 15px; 
+            text-transform: uppercase;
+            /* 确保分割线宽度适中且居中 */
+            border-bottom: 2px solid #f0f0f0; 
+            padding-bottom: 8px; 
+            display: block;
+            height: 25px; 
+            line-height: 16px;
+            width: 100%; /* 占满列宽以对齐下方的按钮组 */
         }
 
-        /* --- 图片与 Pinterest --- */
+        /* --- 图片与组件 --- */
         div[data-testid="stImage"] img {
             height: 450px !important; object-fit: cover !important; 
             border-radius: 8px !important; width: 100% !important;
@@ -283,7 +295,8 @@ with st.container():
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2)
+            # 关键修正：增加 gap="small" 使左右按钮列紧凑，视觉上居中对齐标题
+            sc1, sc2 = st.columns(2, gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
                 if target.button(label, key=f"btn_{val}_{i}"):
@@ -335,7 +348,7 @@ if target_query:
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- ✨ Explore Aesthetics (纯HTML链接) ---
+        # --- ✨ Explore Aesthetics (Link Mode) ---
         st.markdown("---")
         st.markdown("### ✨ Explore Aesthetics")
         
@@ -348,7 +361,6 @@ if target_query:
         tags_html = "<div class='tag-container'>"
         for tag in soul_tags:
             clean_tag = tag.split("#")[-1] 
-            # text-decoration: none style inline 作为双重保险
             tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link' style='text-decoration:none;'>{tag}</a>"
         tags_html += "</div>"
         
