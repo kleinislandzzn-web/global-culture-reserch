@@ -19,11 +19,7 @@ def local_css():
         /* --- 布局与对齐 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 顶部主分类按钮 (有边框胶囊状) --- */
-        /* 这里我们利用 Streamlit 的层级特征，只针对顶部大分类区域的按钮应用样式 */
-        /* 注意：Streamlit CSS 很难精确区分不同区域的按钮，这里应用通用样式，
-           然后为 Tag 区域应用特殊 CSS Hack */
-        
+        /* --- 全局按钮样式 (主要针对顶部分类) --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             min-height: 45px;
@@ -34,6 +30,7 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
@@ -65,13 +62,25 @@ def local_css():
             border-radius: 8px !important; width: 100% !important;
         }
 
-        /* --- Pinterest 按钮 --- */
+        /* --- Pinterest 按钮 (精致版) --- */
         .pinterest-btn {
-            display: block; text-align: center; text-decoration: none; background-color: #E60023;
-            color: white !important; padding: 10px 0; border-radius: 8px;
-            font-weight: bold; font-size: 12px; margin-top: 5px; transition: all 0.3s;
+            display: inline-block; /* 改回行内块，变小 */
+            text-decoration: none; 
+            background-color: #E60023;
+            color: white !important; 
+            padding: 6px 12px; /* 减小内边距 */
+            border-radius: 20px; /* 变成圆角胶囊 */
+            font-weight: bold; 
+            font-size: 11px; 
+            margin-top: 8px; 
+            transition: all 0.3s;
+            box-shadow: 0 2px 4px rgba(230, 0, 35, 0.2);
         }
-        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
+        .pinterest-btn:hover { 
+            background-color: #ad081b; 
+            transform: translateY(-1px); 
+            box-shadow: 0 4px 8px rgba(230, 0, 35, 0.3);
+        }
 
         /* --- 来源标签样式 --- */
         .source-badge {
@@ -147,17 +156,14 @@ def get_visuals(user_query, uhd_mode):
     else:
         search_term = f"{user_query} aesthetic"
 
-    # 请求更多图片以确保足够筛选
     fetch_limit = 15 
     
     p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_limit)
     u_photos, u_err = _fetch_unsplash(search_term, uhd_mode, fetch_limit)
     
-    # 各截取前 9 张 (共 18 张)
     p_final = p_photos[:9]
     u_final = u_photos[:9]
     
-    # 交叉合并
     combined_photos = []
     for p, u in zip_longest(p_final, u_final):
         if p: combined_photos.append(p)
@@ -230,7 +236,6 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # --- 1. 搜索栏与设置 ---
-# 布局：2(Spacer) : 4(Search) : 1(UHD) : 2(Spacer)
 c_sp1, c_search, c_opt, c_sp2 = st.columns([2, 4, 1, 2])
 
 with c_search:
@@ -273,7 +278,6 @@ target_query = st.session_state.search_query if st.session_state.search_query el
 is_default = not st.session_state.search_query
 
 if target_query:
-    # 统一搜图
     with st.spinner(f"Curating visual mix from Pexels & Unsplash..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
@@ -297,13 +301,12 @@ if target_query:
         else:
             st.info("Visual exploration mode.") if is_default else st.warning("No context found.")
             
-        # --- External ---
         st.markdown("---")
         st.markdown("### 📌 External")
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- Explore More Aesthetics (Tag 区域) ---
+        # --- Explore More Aesthetics (纯文本 Tag 样式) ---
         st.markdown("---")
         st.markdown("### ✨ Explore More Aesthetics")
         
@@ -313,28 +316,32 @@ if target_query:
             "#Bioluminescence", "#Chromatic", "#Knolling", "#LightAcademia"
         ]
         
-        # 注入 CSS 使得该区域按钮看起来像文本
+        # 注入专门针对左侧 Tag 区域的 CSS hack
+        # 使用多重嵌套选择器来提高权重，强制覆盖全局按钮样式
         st.markdown("""
         <style>
-            /* 定制 Tag 按钮样式: 无边框，灰色文字 */
-            div[data-testid="column"] div[data-testid="column"] .stButton button {
+            /* 针对左侧 Tag 的特殊样式覆盖 */
+            /* 使用 nth-of-type 或结构选择器来定位左侧栏内的按钮 */
+            [data-testid="column"]:nth-of-type(1) [data-testid="column"] button {
                 border: none !important;
                 background: transparent !important;
-                color: #888 !important;
-                text-align: left !important;
-                padding-left: 0 !important;
                 box-shadow: none !important;
-                font-weight: 400 !important;
-                font-size: 12px !important;
-                min-height: 20px !important;
+                color: #999 !important;
+                text-align: left !important;
+                padding: 0px !important;
+                margin-bottom: 2px !important;
                 height: auto !important;
+                min-height: 24px !important;
+                font-weight: 400 !important;
             }
-            div[data-testid="column"] div[data-testid="column"] .stButton button:hover {
+            [data-testid="column"]:nth-of-type(1) [data-testid="column"] button:hover {
                 color: #333 !important;
                 text-decoration: underline !important;
                 background: transparent !important;
                 transform: none !important;
+                border: none !important;
             }
+            /* 恢复左侧上方 Pinterest 按钮不受影响 (它是 a 标签，不是 button) */
         </style>
         """, unsafe_allow_html=True)
 
