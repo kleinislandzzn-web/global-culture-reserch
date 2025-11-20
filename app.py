@@ -63,7 +63,7 @@ def local_css():
             text-transform: uppercase;
             border-bottom: 2px solid #f0f0f0;
             padding-bottom: 8px;
-            display: block; /* 块级元素确保占满宽度 */
+            display: block;
         }
 
         /* --- 4. 图片瀑布流 --- */
@@ -144,4 +144,114 @@ VISUAL_DICT = {
 # ==========================================
 # 4. 搜图引擎逻辑
 # ==========================================
-def get_visuals(source, user_query, uhd_mode, per_page=15
+def get_visuals(source, user_query, uhd_mode, per_page=15):
+    clean_query = user_query.lower().strip()
+    is_optimized = False
+    
+    if clean_query in VISUAL_DICT:
+        search_term = VISUAL_DICT[clean_query]
+        is_optimized = True
+    else:
+        search_term = f"{user_query} aesthetic"
+
+    if source == "Pexels":
+        photos, error = _fetch_pexels(search_term, uhd_mode, per_page)
+    else:
+        photos, error = _fetch_unsplash(search_term, uhd_mode, per_page)
+        
+    return photos, error, search_term, is_optimized
+
+def _fetch_pexels(query, uhd_mode, per_page):
+    headers = {"Authorization": PEXELS_API_KEY}
+    url = "https://api.pexels.com/v1/search"
+    params = {"query": query, "per_page": per_page, "orientation": "portrait", "locale": "en-US"}
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            raw = res.json().get("photos", [])
+            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
+            final = filtered[:9]
+            return [{
+                "src": p['src']['large2x'], "url": p['url'], 
+                "alt": p['alt'] or "Pexels Image", "res": f"{p['width']}x{p['height']}"
+            } for p in final], None
+        return [], f"Pexels Error: {res.status_code}"
+    except Exception as e:
+        return [], str(e)
+
+def _fetch_unsplash(query, uhd_mode, per_page):
+    headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
+    url = "https://api.unsplash.com/search/photos"
+    params = {"query": query, "per_page": per_page, "orientation": "portrait"}
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            raw = res.json().get("results", [])
+            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
+            final = filtered[:9]
+            return [{
+                "src": p['urls']['regular'], "url": p['links']['html'], 
+                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}"
+            } for p in final], None
+        elif res.status_code == 403: return [], "⚠️ Unsplash Limit Reached"
+        return [], f"Unsplash Error: {res.status_code}"
+    except Exception as e:
+        return [], str(e)
+
+def get_wiki_summary(query):
+    try:
+        wikipedia.set_lang("en")
+        res = wikipedia.search(query)
+        if res:
+            page = wikipedia.page(res[0], auto_suggest=False)
+            return page.summary[0:600] + "...", page.url, res[0]
+        return None, "#", None
+    except: return None, "#", None
+
+# ==========================================
+# 5. 页面主程序
+# ==========================================
+st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
+local_css()
+
+st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
+
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
+
+# --- 1. 核心分类网格 (4列布局) ---
+with st.container():
+    # 使用 4 列，Trending 放第一个
+    c1, c2, c3, c4 = st.columns(4, gap="medium")
+
+    def create_grid(column, title, emoji, items):
+        with column:
+            # 自定义居中标题
+            st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
+            # 内部 2x3 布局
+            sc1, sc2 = st.columns(2)
+            for i, (label, val) in enumerate(items):
+                target = sc1 if i % 2 == 0 else sc2
+                if target.button(label, key=f"btn_{val}_{i}"):
+                    st.session_state.search_query = val
+                    st.rerun()
+
+    # 数据定义
+    trending = [("Retro Futurism", "retro futurism"), ("Old Money", "old money"), ("Y2K", "y2k"), ("Cottagecore", "cottagecore"), ("Gorpcore", "gorpcore"), ("Mob Wife", "mob wife")]
+    fashion = [("Kimono", "kimono"), ("Hanfu", "hanfu"), ("Sari", "sari"), ("Qipao", "qipao"), ("Kilt", "kilt"), ("Flamenco", "flamenco")]
+    arch = [("Bauhaus", "bauhaus"), ("Gothic", "gothic"), ("Santorini", "santorini"), ("Brutalist", "brutalist"), ("Pagoda", "pagoda"), ("Art Deco", "art deco")]
+    culture = [("K-Pop", "k-pop"), ("Cyberpunk", "cyberpunk"), ("Zen", "zen"), ("Hollywood", "hollywood"), ("Bollywood", "bollywood"), ("Steampunk", "steampunk")]
+
+    create_grid(c1, "TRENDING", "🔥", trending)
+    create_grid(c2, "LOCAL FASHION", "👘", fashion)
+    create_grid(c3, "ARCHITECTURE", "🏛️", arch)
+    create_grid(c4, "POP CULTURE", "🎨", culture)
+
+# --- 2. 灵感探索 (More Button) ---
+st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
+with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
+    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
+    
+    # 灵感词云 (Tag Cloud)
+    soul_tags =
