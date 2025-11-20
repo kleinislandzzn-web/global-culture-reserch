@@ -2,6 +2,7 @@ import streamlit as st
 import wikipedia
 import requests
 import random
+from itertools import zip_longest
 
 # ==========================================
 # 1. 配置区域
@@ -16,11 +17,9 @@ def local_css():
     st.markdown("""
     <style>
         /* --- 布局与对齐 --- */
-        /* 搜索栏组件下移对齐 */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
-        div[data-testid="column"] [data-testid="stRadio"] { margin-top: 8px; }
 
-        /* --- 按钮样式 --- */
+        /* --- 按钮样式 (主分类) --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             min-height: 45px;
@@ -62,17 +61,19 @@ def local_css():
             border-radius: 8px !important; width: 100% !important;
         }
 
-        /* --- 组件细节 --- */
-        div[role="radiogroup"] > label > div:first-child { background-color: #f0f2f6; border: 1px solid #dce0e6; }
-        div[role="radiogroup"] > label[data-baseweb="radio"] > div:first-child {
-            background-color: #002FA7 !important; border-color: #002FA7 !important;
-        }
+        /* --- Pinterest 按钮 --- */
         .pinterest-btn {
-            display: inline-block; text-decoration: none; background-color: #E60023;
-            color: white !important; padding: 8px 15px; border-radius: 20px;
-            font-weight: bold; font-size: 12px; margin-top: 10px; transition: all 0.3s;
+            display: block; text-align: center; text-decoration: none; background-color: #E60023;
+            color: white !important; padding: 10px 0; border-radius: 8px;
+            font-weight: bold; font-size: 12px; margin-top: 5px; transition: all 0.3s;
         }
-        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-2px); }
+        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
+
+        /* --- 来源标签样式 --- */
+        .source-badge {
+            font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
+            border: 1px solid #eee; padding: 1px 4px; border-radius: 3px;
+        }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
@@ -114,7 +115,7 @@ VISUAL_DICT = {
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
 
-    # --- ✨ NICHE ---
+    # --- ✨ NICHE TAGS ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -130,9 +131,9 @@ VISUAL_DICT = {
 }
 
 # ==========================================
-# 4. 搜图引擎逻辑
+# 4. 混合搜图引擎逻辑 (8 Pexels + 8 Unsplash)
 # ==========================================
-def get_visuals(source, user_query, uhd_mode, per_page=15):
+def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
     is_optimized = False
     
@@ -142,47 +143,64 @@ def get_visuals(source, user_query, uhd_mode, per_page=15):
     else:
         search_term = f"{user_query} aesthetic"
 
-    if source == "Pexels":
-        photos, error = _fetch_pexels(search_term, uhd_mode, per_page)
-    else:
-        photos, error = _fetch_unsplash(search_term, uhd_mode, per_page)
+    # 同时请求两个 API，各取 8 张
+    # 注意：为了保证能筛出 UHD，稍微多请求几张(12张)，然后截取
+    fetch_limit = 12 
+    
+    p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_limit)
+    u_photos, u_err = _fetch_unsplash(search_term, uhd_mode, fetch_limit)
+    
+    # 截取前 8 张
+    p_final = p_photos[:8]
+    u_final = u_photos[:8]
+    
+    # 交叉合并 (Interleave)
+    combined_photos = []
+    for p, u in zip_longest(p_final, u_final):
+        if p: combined_photos.append(p)
+        if u: combined_photos.append(u)
         
-    return photos, error, search_term, is_optimized
+    error_msg = ""
+    if p_err and u_err: error_msg = f"APIs Error: {p_err} | {u_err}"
+    elif p_err: error_msg = f"Pexels Warning: {p_err}"
+    elif u_err: error_msg = f"Unsplash Warning: {u_err}"
+        
+    return combined_photos, error_msg, search_term, is_optimized
 
-def _fetch_pexels(query, uhd_mode, per_page):
+def _fetch_pexels(query, uhd_mode, limit):
     headers = {"Authorization": PEXELS_API_KEY}
     url = "https://api.pexels.com/v1/search"
-    params = {"query": query, "per_page": per_page, "orientation": "portrait", "locale": "en-US"}
+    params = {"query": query, "per_page": limit, "orientation": "portrait", "locale": "en-US"}
     try:
         res = requests.get(url, headers=headers, params=params)
         if res.status_code == 200:
             raw = res.json().get("photos", [])
             filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
-            final = filtered[:9]
             return [{
                 "src": p['src']['large2x'], "url": p['url'], 
-                "alt": p['alt'] or "Pexels Image", "res": f"{p['width']}x{p['height']}"
-            } for p in final], None
-        return [], f"Pexels Error: {res.status_code}"
+                "alt": p['alt'] or "Pexels", "res": f"{p['width']}x{p['height']}",
+                "source": "Pexels"
+            } for p in filtered], None
+        return [], f"Status {res.status_code}"
     except Exception as e:
         return [], str(e)
 
-def _fetch_unsplash(query, uhd_mode, per_page):
+def _fetch_unsplash(query, uhd_mode, limit):
     headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
     url = "https://api.unsplash.com/search/photos"
-    params = {"query": query, "per_page": per_page, "orientation": "portrait"}
+    params = {"query": query, "per_page": limit, "orientation": "portrait"}
     try:
         res = requests.get(url, headers=headers, params=params)
         if res.status_code == 200:
             raw = res.json().get("results", [])
             filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
-            final = filtered[:9]
             return [{
                 "src": p['urls']['regular'], "url": p['links']['html'], 
-                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}"
-            } for p in final], None
-        elif res.status_code == 403: return [], "⚠️ Unsplash Limit Reached"
-        return [], f"Unsplash Error: {res.status_code}"
+                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}",
+                "source": "Unsplash"
+            } for p in filtered], None
+        elif res.status_code == 403: return [], "Limit Reached"
+        return [], f"Status {res.status_code}"
     except Exception as e:
         return [], str(e)
 
@@ -208,10 +226,9 @@ st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_a
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
-# --- 1. 搜索栏与设置 (移至顶部 & 居中缩短) ---
-# 使用 5 列布局：[空, 搜索, UHD, 图源, 空] 来实现缩短和居中
-# 比例建议: 1(Spacer) : 3(Search) : 1(UHD) : 1(Src) : 1(Spacer)
-c_spacer1, c_search, c_opt, c_source, c_spacer2 = st.columns([1, 3.5, 1, 1, 1])
+# --- 1. 搜索栏与设置 (简化版) ---
+# 布局：2(Spacer) : 4(Search) : 1(UHD) : 2(Spacer) 保持居中
+c_sp1, c_search, c_opt, c_sp2 = st.columns([2, 4, 1, 2])
 
 with c_search:
     user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type concept...", label_visibility="collapsed")
@@ -219,9 +236,6 @@ with c_search:
 
 with c_opt:
     uhd_mode = st.checkbox("💎 Ultra HD", value=False)
-
-with c_source:
-    source = st.radio("Src", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -249,32 +263,17 @@ with st.container():
     create_grid(c3, "ARCHITECTURE", "🏛️", arch)
     create_grid(c4, "POP CULTURE", "🎨", culture)
 
-# --- 3. 灵感探索 (Expander) ---
-st.markdown("<div style='margin-bottom: 10px;'></div>", unsafe_allow_html=True)
-with st.expander("✨ Explore Niche Aesthetics (Click to Generate)"):
-    st.caption("Curated aesthetic styles inspired by Higgsfield/Soul models.")
-    soul_tags = [
-        "Frutiger Aero", "Dreamcore", "Solarpunk", "Acid Pixie", 
-        "Dark Academia", "Vaporwave", "Liminal Space", "Glitch Core",
-        "Bioluminescence", "Chromatic", "Knolling", "Light Academia"
-    ]
-    t_cols = st.columns(6) 
-    for i, tag in enumerate(soul_tags):
-        with t_cols[i % 6]:
-            if st.button(tag, key=f"soul_{tag}"):
-                st.session_state.search_query = tag.lower()
-                st.rerun()
-
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- 4. 结果渲染 ---
+# --- 3. 结果渲染 ---
 target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
 is_default = not st.session_state.search_query
 
 if target_query:
-    with st.spinner(f"Generating moodboard via {source}..."):
+    # 统一搜图，不再区分 source
+    with st.spinner(f"Curating visual mix from Pexels & Unsplash..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
-        photos, error_msg, optimized_term, is_opt = get_visuals(source, target_query, uhd_mode)
+        photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
     if is_default:
         st.markdown(f"### 🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span>", unsafe_allow_html=True)
@@ -285,6 +284,7 @@ if target_query:
 
     col_left, col_right = st.columns([1, 2.5])
     
+    # --- 左侧信息栏 ---
     with col_left:
         st.markdown("### 📖 Context")
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
@@ -294,15 +294,39 @@ if target_query:
         else:
             st.info("Visual exploration mode.") if is_default else st.warning("No context found.")
             
+        # --- External ---
         st.markdown("---")
         st.markdown("### 📌 External")
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
+        # --- Related Tags ---
+        st.markdown("---")
+        st.markdown("### 🏷️ Related Tags")
+        
+        soul_tags = [
+            "#FrutigerAero", "#Dreamcore", "#Solarpunk", "#AcidPixie", 
+            "#DarkAcademia", "#Vaporwave", "#LiminalSpace", "#GlitchCore",
+            "#Bioluminescence", "#Chromatic", "#Knolling", "#LightAcademia"
+        ]
+        for i in range(0, len(soul_tags), 2):
+            tc1, tc2 = st.columns(2)
+            tag1 = soul_tags[i]
+            if tc1.button(tag1, key=f"t_{tag1}"):
+                st.session_state.search_query = tag1.replace("#", "").replace(" ", " ").lower()
+                st.rerun()
+            if i + 1 < len(soul_tags):
+                tag2 = soul_tags[i+1]
+                if tc2.button(tag2, key=f"t_{tag2}"):
+                    st.session_state.search_query = tag2.replace("#", "").replace(" ", " ").lower()
+                    st.rerun()
+
+    # --- 右侧图片 (混合 16 张) ---
     with col_right:
-        st.markdown(f"### 🖼️ Visual Board ({source})")
-        if error_msg: st.error(error_msg)
-        elif photos:
+        st.markdown(f"### 🖼️ Visual Board (Mixed Sources)")
+        if error_msg: st.warning(error_msg)
+        
+        if photos:
             img_cols = st.columns(3)
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
@@ -311,7 +335,10 @@ if target_query:
                         <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
                             <div style="display:flex; justify-content:space-between;">
                                 <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <span style="color:#aaa; background:#f4f4f4; padding:2px 6px; border-radius:4px;">{photo.get('res','HD')}</span>
+                                <div>
+                                    <span class="source-badge">Via {photo['source']}</span>
+                                    <span style="color:#aaa; background:#f4f4f4; padding:1px 4px; border-radius:3px; font-size:9px; margin-left:4px;">{photo.get('res','HD')}</span>
+                                </div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
