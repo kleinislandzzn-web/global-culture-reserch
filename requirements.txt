@@ -1,0 +1,4 @@
+streamlit
+wikipedia
+pycountry
+requests
