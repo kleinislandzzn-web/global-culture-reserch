@@ -1,311 +1,264 @@
 import streamlit as st
 import wikipedia
-import pycountry
 import requests
 
 # ==========================================
-# 1. 配置区域
+# 1. 配置区域 (API Keys)
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
+UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式注入 (关键：实现按钮等宽等高)
+# 2. CSS 样式 (微调：更像 Moodboard 的质感)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* 1. 强制按钮占满列宽，并设定最小高度以保持对齐 */
+        /* 按钮样式 */
         div[data-testid="column"] .stButton button {
             width: 100%;
-            min-height: 80px; /* 设定按钮统一高度 */
-            border-radius: 10px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s;
-            white-space: pre-wrap; /* 允许文字换行 */
+            min-height: 60px;
+            border-radius: 12px; /* 圆角更大，更柔和 */
+            border: 1px solid #f0f0f0;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); /* 增加轻微阴影，更有卡片感 */
+            transition: all 0.2s;
+            font-size: 14px;
+            color: #444;
         }
         div[data-testid="column"] .stButton button:hover {
-            border-color: #e67e22;
-            color: #e67e22;
-            background-color: #fff8f0;
+            border-color: #333;
+            color: #000;
+            background-color: #f9f9f9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        
-        /* 2. 调整左上角语言选择器的样式 */
-        .lang-select-box {
-            margin-bottom: 0px;
+        /* 标题样式 */
+        .main-title {
+            font-family: "Microsoft YaHei", sans-serif;
+            font-size: 3em; 
+            color: #111; 
+            text-align: center; 
+            margin-top: -20px; 
+            margin-bottom: 5px; 
+            font-weight: 800;
+            letter-spacing: -1px;
         }
-        
-        /* 3. 标题样式 */
-        .main-title {font-size: 2.5em; color: #2c3e50; text-align: center; margin-top: -50px;}
-        
-        /* 4. 底部版权 */
-        .footer {text-align: center; color: #888; font-size: 12px; margin-top: 50px;}
-        
-        /* 隐藏默认菜单 */
+        .sub-title {
+            text-align: center; 
+            color: #666; 
+            font-size: 1.2em; 
+            margin-bottom: 40px; 
+            font-family: 'Helvetica Neue', sans-serif;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-transform: uppercase; /* 大写英文更显高级 */
+        }
+        /* 底部 */
+        .footer {
+            text-align: center; 
+            color: #aaa; 
+            font-size: 12px; 
+            margin-top: 80px; 
+            padding-bottom: 20px;
+        }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 核心字典：视觉翻译 & 多语言
+# 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
-    # 流行文化 & 风格
-    "kpop": "korean idol concert performance fashion stage lighting",
+    # --- Fashion ---
+    "kimono": "japanese woman wearing traditional kimono kyoto street portrait",
+    "hanfu": "traditional chinese hanfu dress portrait ethereal fairy style",
+    "sari": "indian woman wearing colorful saree portrait jewelry",
+    "qipao": "woman wearing chinese qipao shanghai vintage style portrait",
+    "kilt": "scottish man wearing traditional kilt tartan highlands",
+    "flamenco": "spanish flamenco dancer woman red dress motion",
+    # --- Architecture ---
+    "bauhaus": "bauhaus architecture building geometric minimal white",
+    "gothic": "gothic cathedral architecture detail spires dark moody",
+    "santorini": "santorini greece white houses blue domes aegean sea",
+    "brutalist": "brutalist architecture concrete building monumental",
+    "pagoda": "asian pagoda temple architecture kyoto red autumn",
+    "art deco": "art deco architecture building new york gold detail",
+    # --- Culture ---
     "k-pop": "korean idol concert performance fashion stage lighting",
+    "kpop": "korean idol concert performance fashion stage lighting",
     "cyberpunk": "neon lights tokyo night futuristic rain high contrast",
-    "赛博朋克": "neon lights tokyo night futuristic rain high contrast",
-    "zen": "japanese zen garden rocks moss water meditation",
-    
-    # 服饰 (Fashion)
-    "kimono": "japanese woman wearing kimono kyoto street portrait",
-    "和服": "japanese woman wearing kimono kyoto street portrait",
-    "hanfu": "traditional chinese hanfu dress portrait ethereal",
-    "汉服": "traditional chinese hanfu dress portrait ethereal",
-    "sari": "indian woman wearing colorful saree portrait",
-    
-    # 建筑 (Architecture)
-    "bauhaus": "bauhaus architecture building geometric white",
-    "包豪斯": "bauhaus architecture building geometric white",
-    "gothic": "gothic cathedral architecture detail spires",
-    "santorini": "santorini greece white houses blue dome ocean",
+    "zen": "japanese zen garden rocks moss water meditation peaceful",
+    "bollywood": "bollywood dance scene colorful costume india movie",
+    "steampunk": "steampunk fashion machinery gears victorian goggles",
+    "hollywood": "hollywood sign los angeles sunset vintage cinema aesthetic"
 }
 
-UI_TEXT = {
-    "English": {
-        "title": "Global Culture Compass",
-        "subtitle": "Aesthetics | Architecture | Fashion",
-        "search_ph": "Search (e.g., Kimono, Cyberpunk)...",
-        "searching": "Analyzing tags and retrieving visuals...",
-        "wiki_title": "📖 Context",
-        "img_title": "📸 Visual Gallery",
-        "no_img": "No relevant high-quality images found.",
-        "no_wiki": "No detailed entry found.",
-        "download": "Download / License",
-        "author_tag": "🏷️ Author's Tag: ",
-        "cat_fashion": "👘 Fashion",
-        "cat_arch": "🏛️ Architecture",
-        "cat_style": "🎨 Culture",
-        # 按钮文字 (Emoji + Name)
-        "btn_kimono": "👘 Kimono\n(Japan)",
-        "btn_hanfu": "👗 Hanfu\n(China)",
-        "btn_sari": "🧣 Sari\n(India)",
-        "btn_bauhaus": "🏢 Bauhaus\n(Germany)",
-        "btn_gothic": "⛪ Gothic\n(Europe)",
-        "btn_santorini": "🕌 Santorini\n(Greece)",
-        "btn_kpop": "🎤 K-Pop\n(Korea)",
-        "btn_cyber": "🤖 Cyberpunk\n(Future)",
-        "btn_zen": "🌿 Zen\n(Japan)",
-    },
-    "中文": {
-        "title": "全球本地化文化智库",
-        "subtitle": "服饰 · 建筑 · 流行审美",
-        "search_ph": "输入关键词 (例如: 和服, 赛博朋克)...",
-        "searching": "正在比对图片标签并检索...",
-        "wiki_title": "📖 文化百科",
-        "img_title": "📸 视觉灵感",
-        "no_img": "未找到标签匹配的高清图片。",
-        "no_wiki": "暂无详细百科。",
-        "download": "下载 / 许可",
-        "author_tag": "🏷️ 作者标签: ",
-        "cat_fashion": "👘 本地服饰",
-        "cat_arch": "🏛️ 特色建筑",
-        "cat_style": "🎨 流行文化",
-        # 按钮文字
-        "btn_kimono": "👘 和服 (Kimono)\n日本",
-        "btn_hanfu": "👗 汉服 (Hanfu)\n中国",
-        "btn_sari": "🧣 纱丽 (Sari)\n印度",
-        "btn_bauhaus": "🏢 包豪斯\n德国",
-        "btn_gothic": "⛪ 哥特式\n欧洲",
-        "btn_santorini": "🕌 圣托里尼\n希腊",
-        "btn_kpop": "🎤 K-Pop\n韩国",
-        "btn_cyber": "🤖 赛博朋克\n未来风格",
-        "btn_zen": "🌿 禅意 (Zen)\n日本",
-    }
-}
-
-# ---------------------------------------------------------
-# 4. 功能函数
-# ---------------------------------------------------------
-def get_pexels_images(user_query, per_page=9):
-    """
-    智能搜索 + 强关联 Tag 验证
-    Pexels API 返回的 'alt' 字段通常包含作者打的标签/描述。
-    """
+# ==========================================
+# 4. 搜图引擎逻辑
+# ==========================================
+def get_visuals(source, user_query, per_page=9):
     clean_query = user_query.lower().strip()
+    is_optimized = False
     
-    # 1. 翻译层
+    # Moodboard 核心：通过字典优化，确保出来的是“氛围图”而不是“说明书图”
     if clean_query in VISUAL_DICT:
         search_term = VISUAL_DICT[clean_query]
+        is_optimized = True
     else:
         search_term = f"{user_query} aesthetic"
 
+    if source == "Pexels":
+        return _fetch_pexels(search_term, per_page), search_term, is_optimized
+    else:
+        return _fetch_unsplash(search_term, per_page), search_term, is_optimized
+
+def _fetch_pexels(query, per_page):
     headers = {"Authorization": PEXELS_API_KEY}
     url = "https://api.pexels.com/v1/search"
-    params = {
-        "query": search_term,
-        "per_page": per_page,
-        "orientation": "portrait",
-        "locale": "en-US"
-    }
-    
+    params = {"query": query, "per_page": per_page, "orientation": "portrait", "locale": "en-US"}
     try:
-        response = requests.get(url, headers=headers, params=params)
-        if response.status_code == 200:
-            photos = response.json().get("photos", [])
-            return photos, None, search_term
-        return [], f"Error: {response.status_code}", search_term
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            data = res.json().get("photos", [])
+            return [{"src": p['src']['large'], "url": p['url'], "alt": p['alt'] or "Pexels Image"} for p in data], None
+        return [], f"Pexels Error: {res.status_code}"
     except Exception as e:
-        return [], str(e), search_term
+        return [], str(e)
 
-def get_wiki_summary(query, lang_code):
+def _fetch_unsplash(query, per_page):
+    headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
+    url = "https://api.unsplash.com/search/photos"
+    params = {"query": query, "per_page": per_page, "orientation": "portrait"}
     try:
-        w_lang = "zh" if lang_code == "中文" else "en"
-        wikipedia.set_lang(w_lang) 
-        search_results = wikipedia.search(query)
-        if search_results:
-            page = wikipedia.page(search_results[0], auto_suggest=False)
-            return page.summary[0:500] + "...", page.url, search_results[0]
-        else:
-            # 兜底英文
-            if w_lang == "zh":
-                wikipedia.set_lang("en")
-                res = wikipedia.search(query)
-                if res:
-                    page = wikipedia.page(res[0], auto_suggest=False)
-                    return f"(显示英文结果) {page.summary[0:500]}...", page.url, res[0]
-            return None, "#", None
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            data = res.json().get("results", [])
+            formatted = []
+            for p in data:
+                formatted.append({
+                    "src": p['urls']['regular'],
+                    "url": p['links']['html'],
+                    "alt": p['alt_description'] or p['description'] or "Unsplash Image"
+                })
+            return formatted, None
+        elif res.status_code == 403:
+            return [], "⚠️ Unsplash Limit Reached (Demo mode)"
+        return [], f"Unsplash Error: {res.status_code}"
+    except Exception as e:
+        return [], str(e)
+
+def get_wiki_summary(query):
+    try:
+        wikipedia.set_lang("en")
+        res = wikipedia.search(query)
+        if res:
+            page = wikipedia.page(res[0], auto_suggest=False)
+            return page.summary[0:600] + "...", page.url, res[0]
+        return None, "#", None
     except:
         return None, "#", None
 
-# ---------------------------------------------------------
+# ==========================================
 # 5. 页面主程序
-# ---------------------------------------------------------
-st.set_page_config(page_title="Global Culture Search", page_icon="🌍", layout="wide")
-local_css() # 注入 CSS
+# ==========================================
+st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
+local_css()
 
-# --- A. 顶部布局：左上角语言切换 + 标题 ---
-# 使用 columns 将语言切换放在最左边
-top_col1, top_col2, top_col3 = st.columns([1, 6, 1])
+# --- 标题区域：Moodboard 风格 ---
+st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
 
-with top_col1:
-    # 语言切换器
-    lang = st.selectbox("Language/语言", ["中文", "English"], label_visibility="collapsed")
-    t = UI_TEXT[lang]
-
-with top_col2:
-    st.markdown(f"<h1 class='main-title'>{t['title']}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align: center; color: grey;'>{t['subtitle']}</p>", unsafe_allow_html=True)
-
-# 初始化 Session State
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
+# --- 按钮区域 ---
+with st.container():
+    col_fashion, col_arch, col_culture = st.columns(3, gap="large")
+
+    def create_grid_buttons(column, title, items):
+        with column:
+            st.markdown(f"<h3 style='text-align:center; font-size:1.2em; color:#333;'>{title}</h3>", unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            for i, (label, val) in enumerate(items):
+                target_col = c1 if i % 2 == 0 else c2
+                if target_col.button(label, key=f"btn_{val}_{i}"):
+                    st.session_state.search_query = val
+                    st.rerun()
+
+    fashion_items = [("👘 Kimono", "Kimono"), ("👗 Hanfu", "Hanfu"), ("🧣 Sari", "Sari"), ("🎋 Qipao", "Qipao"), ("🎼 Kilt", "Kilt"), ("💃 Flamenco", "Flamenco")]
+    arch_items = [("🏢 Bauhaus", "Bauhaus"), ("⛪ Gothic", "Gothic"), ("🌊 Santorini", "Santorini"), ("🧱 Brutalist", "Brutalist"), ("⛩️ Pagoda", "Pagoda"), ("🗽 Art Deco", "Art Deco")]
+    culture_items = [("🎤 K-Pop", "K-Pop"), ("🤖 Cyberpunk", "Cyberpunk"), ("🌿 Zen", "Zen"), ("🎬 Hollywood", "Hollywood"), ("💃 Bollywood", "Bollywood"), ("⚙️ Steampunk", "Steampunk")]
+
+    create_grid_buttons(col_fashion, "👘 Local Fashion", fashion_items)
+    create_grid_buttons(col_arch, "🏛️ Architecture", arch_items)
+    create_grid_buttons(col_culture, "🎨 Pop Culture", culture_items)
+
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- B. 核心分类按钮区 (等宽等高布局) ---
-# 定义三列
-cat_c1, cat_c2, cat_c3 = st.columns(3)
+# --- 搜索与设置区域 ---
+c_search, c_source = st.columns([3, 1])
+with c_search:
+    query = st.text_input("Search Input", value=st.session_state.search_query, placeholder="Type a concept to generate moodboard...", label_visibility="collapsed")
+with c_source:
+    source = st.radio("Visual Engine", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
+    st.caption(f"Engine: {source}")
 
-# 1. 服饰类
-with cat_c1:
-    st.markdown(f"<h3 style='text-align: center;'>{t['cat_fashion']}</h3>", unsafe_allow_html=True)
-    # 3个按钮堆叠
-    if st.button(t['btn_kimono'], key="btn_kim"): 
-        st.session_state.search_query = "Kimono"
-        st.rerun()
-    if st.button(t['btn_hanfu'], key="btn_han"): 
-        st.session_state.search_query = "Hanfu"
-        st.rerun()
-    if st.button(t['btn_sari'], key="btn_sar"): 
-        st.session_state.search_query = "Sari"
-        st.rerun()
-
-# 2. 建筑类
-with cat_c2:
-    st.markdown(f"<h3 style='text-align: center;'>{t['cat_arch']}</h3>", unsafe_allow_html=True)
-    if st.button(t['btn_bauhaus'], key="btn_bau"): 
-        st.session_state.search_query = "Bauhaus"
-        st.rerun()
-    if st.button(t['btn_gothic'], key="btn_got"): 
-        st.session_state.search_query = "Gothic"
-        st.rerun()
-    if st.button(t['btn_santorini'], key="btn_san"): 
-        st.session_state.search_query = "Santorini"
-        st.rerun()
-
-# 3. 文化类
-with cat_c3:
-    st.markdown(f"<h3 style='text-align: center;'>{t['cat_style']}</h3>", unsafe_allow_html=True)
-    if st.button(t['btn_kpop'], key="btn_kpop"): 
-        st.session_state.search_query = "Kpop"
-        st.rerun()
-    if st.button(t['btn_cyber'], key="btn_cyb"): 
-        st.session_state.search_query = "Cyberpunk"
-        st.rerun()
-    if st.button(t['btn_zen'], key="btn_zen"): 
-        st.session_state.search_query = "Zen"
-        st.rerun()
-
-st.divider()
-
-# --- C. 搜索框 ---
-query = st.text_input("Search", value=st.session_state.search_query, placeholder=t['search_ph'], label_visibility="collapsed")
-
-# --- D. 结果展示 ---
+# --- 结果展示 ---
 if query:
-    st.session_state.search_query = query
+    st.session_state.search_query = query 
+    # 提示语变得更有“生成感”
+    with st.spinner(f"Curating visuals from {source}..."):
+        wiki_text, wiki_link, wiki_title = get_wiki_summary(query)
+        photos, error_msg, optimized_term, is_opt = get_visuals(source, query)
     
-    with st.spinner(t['searching']):
-        wiki_text, wiki_link, wiki_title = get_wiki_summary(query, lang)
-        photos, error_msg, real_term = get_pexels_images(query)
+    # 提示框样式调整
+    if is_opt:
+        st.success(f"🎨 **Moodboard Optimized:** '{query}' ➔ `{optimized_term}`")
+    else:
+        st.caption(f"🔍 Generating moodboard for: `{optimized_term}`")
+
+    col_left, col_right = st.columns([1, 2.5])
     
-    col_wiki, col_img = st.columns([1, 2.5])
-    
-    # 左：Wiki
-    with col_wiki:
-        st.markdown(f"### {t['wiki_title']}")
+    with col_left:
+        st.markdown("### 📖 Context")
         st.caption(f"Subject: {wiki_title if wiki_title else query}")
         if wiki_text:
-            st.info(wiki_text)
-            st.markdown(f"[👉 Wikipedia ({lang})]({wiki_link})")
+            st.markdown(f"{wiki_text}")
+            st.markdown(f"[👉 Read more on Wikipedia]({wiki_link})")
         else:
-            st.warning(t['no_wiki'])
+            st.warning("No specific context found.")
 
-    # 右：图片 (含强关联Tag展示)
-    with col_img:
-        st.markdown(f"### {t['img_title']}")
+    with col_right:
+        st.markdown(f"### 🖼️ Visual Board ({source})")
         if error_msg:
             st.error(error_msg)
         elif photos:
             img_cols = st.columns(3)
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    st.image(photo['src']['large'], use_container_width=True)
-                    
-                    # 获取作者的原生标签/描述 (ALT text)
-                    raw_alt = photo.get('alt', 'No tag provided')
-                    
-                    # 强关联展示：把 Pexels 作者的 Tag 显示出来
+                    st.image(photo['src'], use_container_width=True)
+                    raw_alt = photo.get('alt', 'Visual Asset')
+                    if not raw_alt: raw_alt = "Untitled"
                     st.markdown(f"""
-                        <div style="font-size:12px; line-height:1.4;">
-                            <div style="margin-bottom:4px; color:#555; font-style:italic;">
-                                <b>{t['author_tag']}</b><br>"{raw_alt}"
+                        <div style="font-size:12px; line-height:1.4; margin-top:5px;">
+                            <div style="color:#888; font-style:italic; height:35px; overflow:hidden;">
+                                {raw_alt[:50]}...
                             </div>
-                            <a href="{photo['url']}" target="_blank" style="color:#E67E22; text-decoration:none; font-weight:bold;">
-                                ⬇️ {t['download']}
+                            <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none; border-bottom:1px solid #ccc;">
+                                ⬇️ Save Asset
                             </a>
                         </div>
-                        <br>
+                        <div style="margin-bottom: 20px;"></div>
                     """, unsafe_allow_html=True)
         else:
-            st.warning(t['no_img'])
+            st.warning(f"No visuals found for this moodboard.")
 
-# --- E. 底部 ---
 st.markdown("---")
 st.markdown("""
     <div class='footer'>
-        Powered by Streamlit | Images via Pexels API | Text via Wikipedia<br><br>
+        Powered by Streamlit | Pexels & Unsplash API | Wikipedia<br><br>
         <strong>© 2025 Leki's Arc Inc.</strong>
     </div>
 """, unsafe_allow_html=True)
