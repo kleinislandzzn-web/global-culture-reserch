@@ -1,69 +1,90 @@
 import streamlit as st
 import wikipedia
 import requests
+import random
 
 # ==========================================
-# 1. 配置区域 (API Keys 已预填)
+# 1. 配置区域 (API Keys)
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (Moodboard 风格)
+# 2. CSS 样式 (克莱因蓝 + 瀑布流 + 按钮优化)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* 按钮样式 */
+        /* Radio Button 克莱因蓝 */
+        div[role="radiogroup"] > label > div:first-child {
+            background-color: #f0f2f6;
+            border: 1px solid #dce0e6;
+        }
+        div[role="radiogroup"] > label[data-baseweb="radio"] > div:first-child {
+            background-color: #002FA7 !important; 
+            border-color: #002FA7 !important;
+        }
+        
+        /* 图片对齐与质感 */
+        div[data-testid="stImage"] img {
+            height: 450px !important; 
+            object-fit: cover !important; 
+            border-radius: 8px !important;
+            width: 100% !important;
+        }
+        
+        /* Pinterest 按钮样式 */
+        .pinterest-btn {
+            display: inline-block;
+            text-decoration: none;
+            background-color: #E60023;
+            color: white !important;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 12px;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .pinterest-btn:hover {
+            background-color: #ad081b;
+            transform: translateY(-2px);
+        }
+
+        /* 普通按钮 */
         div[data-testid="column"] .stButton button {
             width: 100%;
-            min-height: 60px;
-            border-radius: 12px;
-            border: 1px solid #f0f0f0;
-            background-color: #ffffff;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            transition: all 0.2s;
-            font-size: 14px;
-            color: #444;
+            min-height: 50px;
+            border-radius: 25px;
+            border: 1px solid #eee;
+            background-color: #fff;
+            color: #333;
+            transition: all 0.3s;
         }
         div[data-testid="column"] .stButton button:hover {
-            border-color: #333;
-            color: #000;
-            background-color: #f9f9f9;
+            border-color: #002FA7;
+            color: #002FA7;
+            background-color: #fff;
             transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        /* 标题样式 */
+
+        /* 标题与字体 */
         .main-title {
-            font-family: "Microsoft YaHei", sans-serif;
+            font-family: "Helvetica Neue", Arial, sans-serif;
             font-size: 3em; 
-            color: #111; 
+            color: #000; 
             text-align: center; 
             margin-top: -20px; 
-            margin-bottom: 5px; 
-            font-weight: 800;
-            letter-spacing: -1px;
+            font-weight: 800; 
+            letter-spacing: -1.5px;
         }
         .sub-title {
-            text-align: center; 
-            color: #666; 
-            font-size: 1.2em; 
-            margin-bottom: 40px; 
-            font-family: 'Helvetica Neue', sans-serif;
-            font-weight: 300;
-            letter-spacing: 1px;
-            text-transform: uppercase; 
-        }
-        /* 底部 */
-        .footer {
-            text-align: center; 
-            color: #aaa; 
-            font-size: 12px; 
-            margin-top: 80px; 
-            padding-bottom: 20px;
+            text-align: center; color: #666; font-size: 14px; 
+            margin-bottom: 40px; letter-spacing: 2px; text-transform: uppercase; 
         }
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
+        div[data-testid="stRadio"] {margin-top: -15px;}
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,6 +92,10 @@ def local_css():
 # 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
+    # --- Trending ---
+    "retro futurism": "retro futurism aesthetic 80s sci-fi neon synthwave chrome",
+    "y2k": "y2k aesthetic fashion 2000s futuristic metallic shiny",
+    "cottagecore": "cottagecore aesthetic nature flowers vintage dress picnic",
     # --- Fashion ---
     "kimono": "japanese woman wearing traditional kimono kyoto street portrait",
     "hanfu": "traditional chinese hanfu dress portrait ethereal fairy style",
@@ -96,59 +121,92 @@ VISUAL_DICT = {
 }
 
 # ==========================================
-# 4. 搜图引擎逻辑 (⚠️已修复 BUG)
+# 4. 搜图引擎逻辑 (含 Ultra HD 筛选)
 # ==========================================
-def get_visuals(source, user_query, per_page=9):
+def get_visuals(source, user_query, uhd_mode, per_page=15): # 增加 per_page 以防止筛选后不够9张
     clean_query = user_query.lower().strip()
     is_optimized = False
     
-    # 1. 确定搜索词
     if clean_query in VISUAL_DICT:
         search_term = VISUAL_DICT[clean_query]
         is_optimized = True
     else:
         search_term = f"{user_query} aesthetic"
 
-    # 2. 获取图片 (这里做了修复，先解压 photos 和 error)
     if source == "Pexels":
-        photos, error = _fetch_pexels(search_term, per_page)
+        photos, error = _fetch_pexels(search_term, uhd_mode, per_page)
     else:
-        photos, error = _fetch_unsplash(search_term, per_page)
+        photos, error = _fetch_unsplash(search_term, uhd_mode, per_page)
         
-    # 3. 返回 4 个独立变量
     return photos, error, search_term, is_optimized
 
-def _fetch_pexels(query, per_page):
+def _fetch_pexels(query, uhd_mode, per_page):
     headers = {"Authorization": PEXELS_API_KEY}
     url = "https://api.pexels.com/v1/search"
     params = {"query": query, "per_page": per_page, "orientation": "portrait", "locale": "en-US"}
     try:
         res = requests.get(url, headers=headers, params=params)
         if res.status_code == 200:
-            data = res.json().get("photos", [])
-            return [{"src": p['src']['large'], "url": p['url'], "alt": p['alt'] or "Pexels Image"} for p in data], None
+            raw_data = res.json().get("photos", [])
+            filtered_data = []
+            
+            # --- 筛选逻辑 ---
+            for p in raw_data:
+                # Pexels 提供 width 和 height
+                w, h = p['width'], p['height']
+                min_side = min(w, h)
+                
+                if uhd_mode:
+                    if min_side > 1500: # 严格筛选：最短边必须 > 1500
+                        filtered_data.append(p)
+                else:
+                    filtered_data.append(p)
+            
+            # 截取前9张
+            final_data = filtered_data[:9]
+            
+            return [{
+                "src": p['src']['large2x'], # 获取更高清的图
+                "url": p['url'], 
+                "alt": p['alt'] or "Pexels Image",
+                "res": f"{p['width']}x{p['height']}" # 记录分辨率
+            } for p in final_data], None
+            
         return [], f"Pexels Error: {res.status_code}"
     except Exception as e:
         return [], str(e)
 
-def _fetch_unsplash(query, per_page):
+def _fetch_unsplash(query, uhd_mode, per_page):
     headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
     url = "https://api.unsplash.com/search/photos"
     params = {"query": query, "per_page": per_page, "orientation": "portrait"}
     try:
         res = requests.get(url, headers=headers, params=params)
         if res.status_code == 200:
-            data = res.json().get("results", [])
-            formatted = []
-            for p in data:
-                formatted.append({
-                    "src": p['urls']['regular'],
-                    "url": p['links']['html'],
-                    "alt": p['alt_description'] or p['description'] or "Unsplash Image"
-                })
-            return formatted, None
+            raw_data = res.json().get("results", [])
+            filtered_data = []
+            
+            for p in raw_data:
+                w, h = p['width'], p['height']
+                min_side = min(w, h)
+                
+                if uhd_mode:
+                    if min_side > 1500:
+                        filtered_data.append(p)
+                else:
+                    filtered_data.append(p)
+            
+            final_data = filtered_data[:9]
+
+            return [{
+                "src": p['urls']['regular'],
+                "url": p['links']['html'],
+                "alt": p['alt_description'] or p['description'] or "Unsplash Image",
+                "res": f"{p['width']}x{p['height']}"
+            } for p in final_data], None
+            
         elif res.status_code == 403:
-            return [], "⚠️ Unsplash Limit Reached (Demo mode limit 50/hr)"
+            return [], "⚠️ Unsplash Limit Reached"
         return [], f"Unsplash Error: {res.status_code}"
     except Exception as e:
         return [], str(e)
@@ -170,7 +228,6 @@ def get_wiki_summary(query):
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 local_css()
 
-# --- 标题区域 ---
 st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
 
@@ -183,7 +240,7 @@ with st.container():
 
     def create_grid_buttons(column, title, items):
         with column:
-            st.markdown(f"<h3 style='text-align:center; font-size:1.2em; color:#333;'>{title}</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='text-align:center; font-size:14px; color:#999; margin-bottom:15px;'>{title}</h3>", unsafe_allow_html=True)
             c1, c2 = st.columns(2)
             for i, (label, val) in enumerate(items):
                 target_col = c1 if i % 2 == 0 else c2
@@ -195,45 +252,73 @@ with st.container():
     arch_items = [("🏢 Bauhaus", "Bauhaus"), ("⛪ Gothic", "Gothic"), ("🌊 Santorini", "Santorini"), ("🧱 Brutalist", "Brutalist"), ("⛩️ Pagoda", "Pagoda"), ("🗽 Art Deco", "Art Deco")]
     culture_items = [("🎤 K-Pop", "K-Pop"), ("🤖 Cyberpunk", "Cyberpunk"), ("🌿 Zen", "Zen"), ("🎬 Hollywood", "Hollywood"), ("💃 Bollywood", "Bollywood"), ("⚙️ Steampunk", "Steampunk")]
 
-    create_grid_buttons(col_fashion, "👘 Local Fashion", fashion_items)
-    create_grid_buttons(col_arch, "🏛️ Architecture", arch_items)
-    create_grid_buttons(col_culture, "🎨 Pop Culture", culture_items)
+    create_grid_buttons(col_fashion, "LOCAL FASHION", fashion_items)
+    create_grid_buttons(col_arch, "ARCHITECTURE", arch_items)
+    create_grid_buttons(col_culture, "POP CULTURE", culture_items)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 搜索与设置区域 ---
-c_search, c_source = st.columns([3, 1])
-with c_search:
-    query = st.text_input("Search Input", value=st.session_state.search_query, placeholder="Type a concept (e.g. Neon, Temple) to generate moodboard...", label_visibility="collapsed")
-with c_source:
-    source = st.radio("Visual Engine", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
-    st.caption(f"Engine: {source}")
+# --- 搜索栏 + 设置 ---
+c_search, c_opt, c_source = st.columns([3, 1, 1])
 
-# --- 结果展示 ---
-if query:
-    st.session_state.search_query = query 
+with c_search:
+    user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type to explore...", label_visibility="collapsed")
+    if user_input: st.session_state.search_query = user_input
+
+with c_opt:
+    # Ultra HD 筛选开关
+    uhd_mode = st.checkbox("💎 Ultra HD (>1.5k px)", value=False)
+
+with c_source:
+    source = st.radio("Src", ["Pexels", "Unsplash"], horizontal=True, label_visibility="collapsed")
+
+# --- 核心逻辑 ---
+if not st.session_state.search_query:
+    target_query = "Retro Futurism" 
+    is_default_view = True
+else:
+    target_query = st.session_state.search_query
+    is_default_view = False
+
+if target_query:
+    with st.spinner(f"Curating visuals via {source} (UHD: {uhd_mode})..."):
+        wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
+        # 传入 uhd_mode 参数
+        photos, error_msg, optimized_term, is_opt = get_visuals(source, target_query, uhd_mode)
     
-    with st.spinner(f"Curating visuals from {source}..."):
-        wiki_text, wiki_link, wiki_title = get_wiki_summary(query)
-        # 调用修复后的 get_visuals，现在它能正确返回4个值了
-        photos, error_msg, optimized_term, is_opt = get_visuals(source, query)
-    
-    if is_opt:
-        st.success(f"🎨 **Moodboard Optimized:** '{query}' ➔ `{optimized_term}`")
+    if is_default_view:
+        st.markdown(f"### 🔥 Trending Now: <span style='color:#002FA7'>{target_query}</span>", unsafe_allow_html=True)
+    elif is_opt:
+        st.success(f"🎨 **Moodboard Optimized:** '{target_query}' ➔ `{optimized_term}`")
     else:
-        st.caption(f"🔍 Generating moodboard for: `{optimized_term}`")
+        st.caption(f"🔍 Result for: `{optimized_term}`")
 
     col_left, col_right = st.columns([1, 2.5])
     
+    # Left: Wiki & Pinterest Button
     with col_left:
         st.markdown("### 📖 Context")
-        st.caption(f"Subject: {wiki_title if wiki_title else query}")
+        st.caption(f"Subject: {wiki_title if wiki_title else target_query}")
         if wiki_text:
             st.markdown(f"{wiki_text}")
             st.markdown(f"[👉 Read more on Wikipedia]({wiki_link})")
         else:
-            st.warning("No specific context found.")
+            if is_default_view: st.info("Welcome to the Visual Moodboard.")
+            else: st.warning("No specific context found.")
+            
+        # --- 📌 新增：Pinterest 传送门 ---
+        st.markdown("---")
+        st.markdown("### 📌 External")
+        st.caption("Need more inspiration? Check Pinterest boards.")
+        # 生成跳转链接
+        pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
+        st.markdown(f"""
+            <a href="{pinterest_url}" target="_blank" class="pinterest-btn">
+                Search "{target_query}" on Pinterest ↗
+            </a>
+        """, unsafe_allow_html=True)
 
+    # Right: Images
     with col_right:
         st.markdown(f"### 🖼️ Visual Board ({source})")
         if error_msg:
@@ -243,26 +328,36 @@ if query:
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
                     st.image(photo['src'], use_container_width=True)
+                    
                     raw_alt = photo.get('alt', 'Visual Asset')
                     if not raw_alt: raw_alt = "Untitled"
+                    res_info = photo.get('res', 'High Res')
+                    
                     st.markdown(f"""
-                        <div style="font-size:12px; line-height:1.4; margin-top:5px;">
-                            <div style="color:#888; font-style:italic; height:35px; overflow:hidden;">
-                                {raw_alt[:50]}...
+                        <div style="font-size:12px; line-height:1.4; margin-top:8px; margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between;">
+                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:600; text-decoration:none;">
+                                    ⬇️ Download
+                                </a>
+                                <span style="color:#aaa; font-size:10px; background:#f0f0f0; padding:2px 6px; border-radius:4px;">
+                                    {res_info}
+                                </span>
                             </div>
-                            <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none; border-bottom:1px solid #ccc;">
-                                ⬇️ Save Asset
-                            </a>
+                            <div style="color:#888; font-style:italic; margin-top:4px;">
+                                {raw_alt[:25]}...
+                            </div>
                         </div>
-                        <div style="margin-bottom: 20px;"></div>
                     """, unsafe_allow_html=True)
         else:
-            st.warning(f"No visuals found for this moodboard.")
+            if uhd_mode:
+                st.warning(f"No images found with shortest side > 1500px. Try turning off 'Ultra HD' mode.")
+            else:
+                st.warning(f"No visuals found.")
 
 st.markdown("---")
 st.markdown("""
     <div class='footer'>
-        Powered by Streamlit | Pexels & Unsplash API | Wikipedia<br><br>
+        Powered by Streamlit | Pexels & Unsplash API<br><br>
         <strong>© 2025 Leki's Arc Inc.</strong>
     </div>
 """, unsafe_allow_html=True)
