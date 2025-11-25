@@ -5,58 +5,95 @@ import random
 from itertools import zip_longest
 
 # ==========================================
-# 0. URL 参数处理
+# 0. URL 参数处理 & 全局配置
 # ==========================================
+st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
+
 if "q" in st.query_params:
     param_q = st.query_params["q"]
     if param_q:
         st.session_state.search_query = param_q
 
+if 'search_query' not in st.session_state:
+    st.session_state.search_query = ""
+
 # ==========================================
-# 1. 配置区域
+# 1. 配置区域 (保持你原本的写法)
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (内容居中终极修复)
+# 2. CSS 样式 (UI 终极修复：按钮网格对齐)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 布局微调 --- */
-        div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
+        /* --- 全局列调整 --- */
+        div[data-testid="column"] {
+            align-items: center; /* 垂直方向居中 */
+        }
+        div[data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (核心修复：内容绝对居中) --- */
+        /* --- 标题与分割线 --- */
+        .category-header {
+            text-align: center; 
+            font-size: 13px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1.5px; 
+            margin-bottom: 12px; 
+            text-transform: uppercase;
+            padding-bottom: 8px; 
+            border-bottom: 2px solid #f0f0f0; 
+            display: block;
+            width: 100%;
+        }
+
+        /* --- 核心修复：按钮网格样式 --- */
+        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
+            gap: 0.5rem; /* 控制每行按钮之间的垂直间距 */
+        }
+
+        /* 按钮本体样式 - 强制统一高度 */
         div[data-testid="column"] .stButton button {
             width: 100% !important;
-            height: 48px !important; 
-            min-height: 48px !important;
-            border-radius: 8px;
-            border: 1px solid #f0f0f0;
+            height: 50px !important;       
+            min-height: 50px !important;
+            max-height: 50px !important;
+            
+            border-radius: 10px;
+            border: 1px solid #f5f5f5;
             background-color: #fff;
             color: #444;
             font-size: 13px;
             font-weight: 500;
-            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
             
-            /* 核心修复 1：Flexbox 容器居中 */
+            /* --- 内容绝对居中 (Flexbox) --- */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             
-            /* 移除所有边距 */
-            margin: 0 !important;
-            padding: 0 5px !important;
+            margin: 0 !important; 
+            padding: 0 4px !important;
         }
         
-        /* 核心修复 2：强制内部文字/Markdown容器居中 */
+        /* 按钮内部文字 - 强制单行不换行 */
         div[data-testid="column"] .stButton button p {
+            font-size: 13px;
+            line-height: 1.2 !important;
             text-align: center !important;
-            width: 100% !important;
             margin: 0 !important;
+            white-space: nowrap; /* 核心：禁止换行 */
+            overflow: hidden;
+            text-overflow: ellipsis; /* 超长显示省略号 */
+            width: 100%;
             display: block !important;
         }
+        
+        /* 修复 Markdown 容器 */
         div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
             justify-content: center !important;
             text-align: center !important;
@@ -68,34 +105,19 @@ def local_css():
             border-color: #002FA7;
             color: #002FA7;
             background-color: #f8faff;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 8px rgba(0,47,167,0.1);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,47,167,0.08);
+            z-index: 2;
         }
 
-        /* --- 2. Tag 纯文本链接样式 --- */
+        /* --- Tag 链接样式 --- */
         .tag-link {
-            display: inline-block;
-            color: #999;
-            text-decoration: none !important;
-            font-size: 12px;
-            font-weight: 500;
-            margin-right: 12px;
-            margin-bottom: 8px;
-            font-family: "Helvetica Neue", sans-serif;
-            transition: color 0.2s;
-            cursor: pointer;
-            border-bottom: none !important;
+            display: inline-block; color: #999; text-decoration: none !important;
+            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
+            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
         }
-        .tag-link:hover {
-            color: #333;
-            opacity: 0.8;
-        }
-        .tag-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
+        .tag-link:hover { color: #333; opacity: 0.8; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 
         /* --- 字体与标题 --- */
         .main-title {
@@ -106,23 +128,6 @@ def local_css():
         .sub-title {
             text-align: center; color: #888; font-size: 0.9em; 
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
-        }
-        
-        /* 分类标题 */
-        .category-header {
-            text-align: center; 
-            font-size: 12px; 
-            color: #999; 
-            font-weight: 700;
-            letter-spacing: 1px; 
-            margin-bottom: 15px; 
-            text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; 
-            padding-bottom: 8px; 
-            display: block;
-            height: 25px; 
-            line-height: 16px;
-            width: 100%;
         }
 
         /* --- 图片与组件 --- */
@@ -149,45 +154,27 @@ def local_css():
 # 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
-    # --- 🛑 BUG FIXES ---
-    "niqab": "niqab clothing",
-    "hijab": "hijab clothing",
-    "abaya": "abaya clothing",
-    "burqa": "burqa clothing",
-    
-    # --- 🔥 TRENDING ---
+    "niqab": "niqab clothing", "hijab": "hijab clothing", "abaya": "abaya clothing", "burqa": "burqa clothing",
     "retro futurism": "retro futurism aesthetic 80s sci-fi neon synthwave chrome",
     "old money": "old money aesthetic fashion luxury ralph lauren style quiet luxury",
     "y2k": "y2k aesthetic fashion 2000s futuristic metallic shiny pink",
     "cottagecore": "cottagecore aesthetic nature flowers vintage dress picnic sunlight",
     "gorpcore": "gorpcore fashion north face arc'teryx outdoor hiking aesthetic",
     "mob wife": "mob wife aesthetic fur coat leopard print sunglasses luxury",
-
-    # --- 👘 FASHION ---
-    "kimono": "kimono clothing",
-    "hanfu": "hanfu clothing",
-    "sari": "sari clothing",
-    "qipao": "qipao clothing",
-    "kilt": "kilt clothing",
-    "flamenco": "flamenco dress clothing",
-
-    # --- 🏛️ ARCHITECTURE ---
+    "kimono": "kimono clothing", "hanfu": "hanfu clothing", "sari": "sari clothing",
+    "qipao": "qipao clothing", "kilt": "kilt clothing", "flamenco": "flamenco dress clothing",
     "bauhaus": "bauhaus architecture building geometric minimal white",
     "gothic": "gothic cathedral architecture detail spires dark moody",
     "santorini": "santorini greece white houses blue domes aegean sea",
     "brutalist": "brutalist architecture concrete building monumental",
     "pagoda": "asian pagoda temple architecture kyoto red autumn",
     "art deco": "art deco architecture building new york gold detail",
-
-    # --- 🎨 POP CULTURE ---
     "k-pop": "korean idol concert performance fashion stage lighting",
     "cyberpunk": "neon lights tokyo night futuristic rain high contrast",
     "zen": "japanese zen garden rocks moss water meditation peaceful",
     "hollywood": "hollywood sign los angeles sunset vintage cinema aesthetic",
     "bollywood": "bollywood dance scene colorful costume india movie",
     "steampunk": "steampunk fashion machinery gears victorian goggles",
-
-    # --- ✨ NICHE TAGS ---
     "frutiger aero": "frutiger aero aesthetic glossy water bubbles windows xp futuristic 2000s",
     "dreamcore": "dreamcore aesthetic surreal liminal space weird nostalgic eyes",
     "solarpunk": "solarpunk architecture nature green plants futuristic city sunlight",
@@ -202,7 +189,6 @@ VISUAL_DICT = {
     "knolling": "knolling photography objects organized neatly flat lay overhead"
 }
 
-# 🚫 博物馆屏蔽名单
 MODERN_EXCLUDE_LIST = [
     "retro futurism", "cyberpunk", "y2k", "gorpcore", "mob wife", "pop culture",
     "k-pop", "hollywood", "bollywood", "steampunk", "frutiger aero", "dreamcore", 
@@ -211,8 +197,103 @@ MODERN_EXCLUDE_LIST = [
 ]
 
 # ==========================================
-# 4. 搜图引擎
+# 4. 搜图引擎 (保留原API写法 + 增加缓存避免卡顿)
 # ==========================================
+@st.cache_data(ttl=3600)
+def _fetch_pexels(query, uhd_mode, limit):
+    headers = {"Authorization": PEXELS_API_KEY}
+    url = "https://api.pexels.com/v1/search"
+    params = {"query": query, "per_page": limit, "orientation": "portrait", "locale": "en-US"}
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            raw = res.json().get("photos", [])
+            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
+            return [{
+                "src": p['src']['large2x'], "url": p['url'], 
+                "alt": p['alt'] or "Pexels", "res": f"{p['width']}x{p['height']}",
+                "source": "Pexels"
+            } for p in filtered], None
+        return [], f"Pexels {res.status_code}"
+    except Exception as e: return [], str(e)
+
+@st.cache_data(ttl=3600)
+def _fetch_unsplash(query, uhd_mode, limit):
+    headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
+    url = "https://api.unsplash.com/search/photos"
+    params = {"query": query, "per_page": limit, "orientation": "portrait"}
+    try:
+        res = requests.get(url, headers=headers, params=params)
+        if res.status_code == 200:
+            raw = res.json().get("results", [])
+            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
+            return [{
+                "src": p['urls']['regular'], "url": p['links']['html'], 
+                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}",
+                "source": "Unsplash"
+            } for p in filtered], None
+        return [], f"Unsplash {res.status_code}"
+    except Exception as e: return [], str(e)
+
+@st.cache_data(ttl=3600)
+def _fetch_aic(query, limit):
+    url = "https://api.artic.edu/api/v1/artworks/search"
+    params = {"q": query, "limit": limit * 2, "fields": "id,title,image_id,artist_display", "query[term][is_public_domain]": "true"}
+    try:
+        res = requests.get(url, params=params)
+        if res.status_code == 200:
+            data = res.json().get("data", [])
+            formatted = []
+            for item in data:
+                img_id = item.get('image_id')
+                if img_id:
+                    img_url = f"https://www.artic.edu/iiif/2/{img_id}/full/843,/0/default.jpg"
+                    formatted.append({
+                        "src": img_url, "url": f"https://www.artic.edu/artworks/{item['id']}",
+                        "alt": f"{item['title']}", "res": "Museum Art", "source": "Art Institute"
+                    })
+            return formatted[:limit], None
+        return [], f"AIC {res.status_code}"
+    except Exception as e: return [], str(e)
+
+@st.cache_data(ttl=3600)
+def _fetch_met(query, limit):
+    search_url = "https://collectionapi.metmuseum.org/public/collection/v1/search"
+    params = {"q": query, "hasImages": "true", "isPublicDomain": "true"}
+    try:
+        res = requests.get(search_url, params=params)
+        if res.status_code == 200:
+            object_ids = res.json().get('objectIDs', [])
+            if not object_ids: return [], "No IDs"
+            target_ids = object_ids[:limit] 
+            formatted = []
+            for obj_id in target_ids:
+                obj_url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}"
+                obj_res = requests.get(obj_url)
+                if obj_res.status_code == 200:
+                    data = obj_res.json()
+                    img_url = data.get('primaryImage')
+                    if img_url:
+                        formatted.append({
+                            "src": img_url, "url": data.get('objectURL', '#'),
+                            "alt": f"{data.get('title', 'Artwork')}",
+                            "res": "The Met", "source": "The Met"
+                        })
+            return formatted, None
+        return [], f"Met Search {res.status_code}"
+    except Exception as e: return [], str(e)
+
+@st.cache_data(ttl=3600)
+def get_wiki_summary(query):
+    try:
+        wikipedia.set_lang("en")
+        res = wikipedia.search(query)
+        if res:
+            page = wikipedia.page(res[0], auto_suggest=False)
+            return page.summary[0:600] + "...", page.url, res[0]
+        return None, "#", None
+    except: return None, "#", None
+
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
     is_optimized = False
@@ -256,110 +337,19 @@ def get_visuals(user_query, uhd_mode):
         if u: combined_photos.append(u)
         if a: combined_photos.append(a)
         if m: combined_photos.append(m)
+    
+    # 小功能：随机打乱，让结果更丰富
+    random.shuffle(combined_photos)
         
     return combined_photos, "", search_term, is_optimized
-
-def _fetch_pexels(query, uhd_mode, limit):
-    headers = {"Authorization": PEXELS_API_KEY}
-    url = "https://api.pexels.com/v1/search"
-    params = {"query": query, "per_page": limit, "orientation": "portrait", "locale": "en-US"}
-    try:
-        res = requests.get(url, headers=headers, params=params)
-        if res.status_code == 200:
-            raw = res.json().get("photos", [])
-            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
-            return [{
-                "src": p['src']['large2x'], "url": p['url'], 
-                "alt": p['alt'] or "Pexels", "res": f"{p['width']}x{p['height']}",
-                "source": "Pexels"
-            } for p in filtered], None
-        return [], f"Pexels {res.status_code}"
-    except Exception as e: return [], str(e)
-
-def _fetch_unsplash(query, uhd_mode, limit):
-    headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
-    url = "https://api.unsplash.com/search/photos"
-    params = {"query": query, "per_page": limit, "orientation": "portrait"}
-    try:
-        res = requests.get(url, headers=headers, params=params)
-        if res.status_code == 200:
-            raw = res.json().get("results", [])
-            filtered = [p for p in raw if (min(p['width'], p['height']) > 1500)] if uhd_mode else raw
-            return [{
-                "src": p['urls']['regular'], "url": p['links']['html'], 
-                "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}",
-                "source": "Unsplash"
-            } for p in filtered], None
-        return [], f"Unsplash {res.status_code}"
-    except Exception as e: return [], str(e)
-
-def _fetch_aic(query, limit):
-    url = "https://api.artic.edu/api/v1/artworks/search"
-    params = {"q": query, "limit": limit * 2, "fields": "id,title,image_id,artist_display", "query[term][is_public_domain]": "true"}
-    try:
-        res = requests.get(url, params=params)
-        if res.status_code == 200:
-            data = res.json().get("data", [])
-            formatted = []
-            for item in data:
-                img_id = item.get('image_id')
-                if img_id:
-                    img_url = f"https://www.artic.edu/iiif/2/{img_id}/full/843,/0/default.jpg"
-                    formatted.append({
-                        "src": img_url, "url": f"https://www.artic.edu/artworks/{item['id']}",
-                        "alt": f"{item['title']}", "res": "Museum Art", "source": "Art Institute"
-                    })
-            return formatted[:limit], None
-        return [], f"AIC {res.status_code}"
-    except Exception as e: return [], str(e)
-
-def _fetch_met(query, limit):
-    search_url = "https://collectionapi.metmuseum.org/public/collection/v1/search"
-    params = {"q": query, "hasImages": "true", "isPublicDomain": "true"}
-    try:
-        res = requests.get(search_url, params=params)
-        if res.status_code == 200:
-            object_ids = res.json().get('objectIDs', [])
-            if not object_ids: return [], "No IDs"
-            target_ids = object_ids[:limit] 
-            formatted = []
-            for obj_id in target_ids:
-                obj_url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}"
-                obj_res = requests.get(obj_url)
-                if obj_res.status_code == 200:
-                    data = obj_res.json()
-                    img_url = data.get('primaryImage')
-                    if img_url:
-                        formatted.append({
-                            "src": img_url, "url": data.get('objectURL', '#'),
-                            "alt": f"{data.get('title', 'Artwork')}",
-                            "res": "The Met", "source": "The Met"
-                        })
-            return formatted, None
-        return [], f"Met Search {res.status_code}"
-    except Exception as e: return [], str(e)
-
-def get_wiki_summary(query):
-    try:
-        wikipedia.set_lang("en")
-        res = wikipedia.search(query)
-        if res:
-            page = wikipedia.page(res[0], auto_suggest=False)
-            return page.summary[0:600] + "...", page.url, res[0]
-        return None, "#", None
-    except: return None, "#", None
 
 # ==========================================
 # 5. 页面主程序
 # ==========================================
-st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 local_css()
 
 st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
-
-if 'search_query' not in st.session_state:
-    st.session_state.search_query = ""
 
 # --- 1. 搜索栏 ---
 c_sp1, c_search, c_opt, c_sp2 = st.columns([2, 4, 1, 2])
@@ -371,18 +361,27 @@ with c_opt:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 分类网格 ---
+# --- 2. 分类网格 (核心修复：对齐与居中) ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
+    
     def create_grid(column, title, emoji, items):
         with column:
+            # 标题
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2, gap="small")
+            # 增加间隔，防止贴得太紧
+            st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
+            
+            # 使用嵌套 Columns 创建 2 列
+            grid_cols = st.columns(2, gap="small") 
+            
             for i, (label, val) in enumerate(items):
-                target = sc1 if i % 2 == 0 else sc2
-                if target.button(label, key=f"btn_{val}_{i}"):
-                    st.session_state.search_query = val
-                    st.rerun()
+                col_idx = 0 if i % 2 == 0 else 1
+                with grid_cols[col_idx]:
+                    # use_container_width=True 让按钮填满，配合 CSS 居中
+                    if st.button(label, key=f"btn_{val}_{i}", use_container_width=True):
+                        st.session_state.search_query = val
+                        st.rerun()
 
     trending = [("🚀 Retro Futurism", "retro futurism"), ("💸 Old Money", "old money"), ("💿 Y2K", "y2k"), ("🏡 Cottagecore", "cottagecore"), ("🧗 Gorpcore", "gorpcore"), ("🐆 Mob Wife", "mob wife")]
     fashion = [("👘 Kimono", "kimono"), ("👗 Hanfu", "hanfu"), ("🧣 Sari", "sari"), ("🎋 Qipao", "qipao"), ("🎼 Kilt", "kilt"), ("💃 Flamenco", "flamenco")]
