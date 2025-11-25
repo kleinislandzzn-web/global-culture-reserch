@@ -2,7 +2,6 @@ import streamlit as st
 import wikipedia
 import requests
 import random
-import io
 from itertools import zip_longest
 
 # ==========================================
@@ -20,7 +19,7 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (终极对齐版)
+# 2. CSS 样式 (内容居中终极修复)
 # ==========================================
 def local_css():
     st.markdown("""
@@ -28,9 +27,9 @@ def local_css():
         /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (强制填满+内部居中) --- */
+        /* --- 1. 主分类按钮 (核心修复：内容绝对居中) --- */
         div[data-testid="column"] .stButton button {
-            width: 100% !important; /* 填满所在的(被挤压后的)列 */
+            width: 100% !important;
             height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
@@ -41,27 +40,30 @@ def local_css():
             font-weight: 500;
             transition: all 0.2s;
             
-            /* Flexbox 内容绝对居中 */
+            /* 核心修复 1：Flexbox 容器居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             
-            /* 文本处理 */
-            white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis;
-            
-            /* 移除边距，由外部Column控制间距 */
+            /* 移除所有边距 */
             margin: 0 !important;
             padding: 0 5px !important;
         }
         
-        /* 强制内部文字容器居中 */
+        /* 核心修复 2：强制内部文字/Markdown容器居中 */
         div[data-testid="column"] .stButton button p {
             text-align: center !important;
-            width: 100%;
+            width: 100% !important;
+            margin: 0 !important;
+            display: block !important;
+        }
+        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100% !important;
         }
 
+        /* 悬停效果 */
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
@@ -375,8 +377,7 @@ with st.container():
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            # 核心修复：使用 Spacers 挤压中间列，实现整体居中
-            _, sc1, sc2, _ = st.columns([0.1, 1, 1, 0.1], gap="small")
+            sc1, sc2 = st.columns(2, gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
                 if target.button(label, key=f"btn_{val}_{i}"):
@@ -451,13 +452,11 @@ if target_query:
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
                     st.image(photo['src'], use_container_width=True)
-                    
-                    # 核心修复：使用 flex 布局让 "Via Source" 强制右对齐
                     st.markdown(f"""
                         <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <div style="display:flex; justify-content:space-between;">
                                 <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <div style="text-align:right; flex-grow:1;"><span class="source-badge">Via {photo['source']}</span></div>
+                                <div><span class="source-badge">Via {photo['source']}</span></div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
