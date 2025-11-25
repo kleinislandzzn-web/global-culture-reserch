@@ -19,17 +19,18 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式
+# 2. CSS 样式 (对齐修正版)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 布局微调 --- */
+        /* --- 布局组件微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (完美居中对齐) --- */
+        /* --- 1. 主分类按钮 (强制居中对齐修复) --- */
+        /* 针对页面中间 4 列分类区域的按钮 */
         div[data-testid="column"] .stButton button {
-            width: 100%;
+            width: 100% !important; /* 强制占满列宽 */
             height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
@@ -39,14 +40,22 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
+            
+            /* 核心：Flexbox 绝对居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
+            
+            /* 文本处理 */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
+            
+            /* 边距修正，确保相对于父容器居中 */
+            margin-left: auto !important;
+            margin-right: auto !important;
             padding: 0 10px !important;
-            margin: 0 auto !important;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
@@ -81,7 +90,7 @@ def local_css():
             margin-top: 10px;
         }
 
-        /* --- 字体与标题 --- */
+        /* --- 字体与标题 (回归简约版) --- */
         .main-title {
             font-family: "PingFang SC", "Helvetica Neue", sans-serif;
             font-size: 3.2em; color: #111; text-align: center; 
@@ -92,7 +101,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 */
+        /* 分类标题 (对齐修正) */
         .category-header {
             text-align: center; 
             font-size: 12px; 
@@ -130,7 +139,7 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典
+# 3. 视觉优化字典 (含博物馆屏蔽)
 # ==========================================
 VISUAL_DICT = {
     # --- 🛑 BUG FIXES ---
