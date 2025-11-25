@@ -19,7 +19,7 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (对齐修复)
+# 2. CSS 样式 (内容居中终极修复)
 # ==========================================
 def local_css():
     st.markdown("""
@@ -27,7 +27,7 @@ def local_css():
         /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (绝对对齐修复) --- */
+        /* --- 1. 主分类按钮 (核心修复：内容绝对居中) --- */
         div[data-testid="column"] .stButton button {
             width: 100% !important;
             height: 48px !important; 
@@ -40,20 +40,30 @@ def local_css():
             font-weight: 500;
             transition: all 0.2s;
             
-            /* 核心：Flexbox 绝对居中 */
+            /* 核心修复 1：Flexbox 容器居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             
-            /* 文本处理 */
-            white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis;
-            
-            /* 移除所有外边距，确保填满列宽 */
+            /* 移除所有边距 */
             margin: 0 !important;
             padding: 0 5px !important;
         }
+        
+        /* 核心修复 2：强制内部文字/Markdown容器居中 */
+        div[data-testid="column"] .stButton button p {
+            text-align: center !important;
+            width: 100% !important;
+            margin: 0 !important;
+            display: block !important;
+        }
+        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100% !important;
+        }
+
+        /* 悬停效果 */
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
@@ -98,7 +108,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 (确保宽度与按钮组一致) */
+        /* 分类标题 */
         .category-header {
             text-align: center; 
             font-size: 12px; 
@@ -361,14 +371,12 @@ with c_opt:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 分类网格 (修复版：移除 Spacers，强制全宽对齐) ---
+# --- 2. 分类网格 ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            # 核心修正：移除左右 spacer [0.15...]，改用标准两列
-            # CSS 已强制 button width 100%，这保证了按钮组宽度与上方 header (也是 100%) 完美对齐
             sc1, sc2 = st.columns(2, gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
