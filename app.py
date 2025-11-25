@@ -19,58 +19,15 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (包含顶部设计 & 蓝色输入框)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 0. 核心修复：输入框高亮变蓝 --- */
-        /* 默认状态 */
-        div[data-baseweb="input"] {
-            border-radius: 8px;
-            border-color: #e0e0e0;
-        }
-        /* 聚焦状态 (Focus) - 强制克莱因蓝 */
-        div[data-baseweb="input"]:focus-within {
-            border-color: #002FA7 !important;
-            box-shadow: 0 0 0 1px #002FA7 !important;
-        }
-
-        /* --- 1. 顶部设计 (Header Design) --- */
-        .header-container {
-            text-align: center;
-            margin-bottom: 40px;
-            padding-top: 20px;
-        }
-        .header-accent {
-            width: 60px;
-            height: 6px;
-            background-color: #002FA7; /* 顶部装饰线 */
-            margin: 0 auto 20px auto;
-            border-radius: 3px;
-        }
-        .main-title {
-            font-family: "PingFang SC", "Helvetica Neue", sans-serif;
-            font-size: 3.5em; 
-            color: #111; 
-            margin: 0; 
-            font-weight: 900; 
-            letter-spacing: -1.5px;
-            line-height: 1.1;
-        }
-        .sub-title {
-            color: #888; 
-            font-size: 0.95em; 
-            margin-top: 10px;
-            font-weight: 500; 
-            letter-spacing: 4px; /* 宽字间距，增加高级感 */
-            text-transform: uppercase;
-        }
-
-        /* --- 2. 布局微调 --- */
+        /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 3. 主分类按钮 (完美对齐) --- */
+        /* --- 1. 主分类按钮 (完美居中对齐) --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             height: 48px !important; 
@@ -99,7 +56,7 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 4. Tag 纯文本链接样式 --- */
+        /* --- 2. Tag 纯文本链接样式 --- */
         .tag-link {
             display: inline-block;
             color: #999;
@@ -124,15 +81,35 @@ def local_css():
             margin-top: 10px;
         }
 
-        /* --- 5. 分类小标题 --- */
+        /* --- 字体与标题 --- */
+        .main-title {
+            font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+            font-size: 3.2em; color: #111; text-align: center; 
+            margin-top: -20px; margin-bottom: 0px; font-weight: 900; letter-spacing: -1px;
+        }
+        .sub-title {
+            text-align: center; color: #888; font-size: 0.9em; 
+            margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
+        }
+        
+        /* 分类标题 */
         .category-header {
-            text-align: center; font-size: 12px; color: #999; font-weight: 700;
-            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
-            height: 25px; line-height: 16px; width: 100%;
+            text-align: center; 
+            font-size: 12px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1px; 
+            margin-bottom: 15px; 
+            text-transform: uppercase;
+            border-bottom: 2px solid #f0f0f0; 
+            padding-bottom: 8px; 
+            display: block;
+            height: 25px; 
+            line-height: 16px;
+            width: 100%;
         }
 
-        /* --- 6. 图片与组件 --- */
+        /* --- 图片与组件 --- */
         div[data-testid="stImage"] img {
             height: 450px !important; object-fit: cover !important; 
             border-radius: 8px !important; width: 100% !important;
@@ -362,14 +339,8 @@ def get_wiki_summary(query):
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 local_css()
 
-# --- 顶部设计 (Magazine Header) ---
-st.markdown("""
-    <div class="header-container">
-        <div class="header-accent"></div>
-        <h1 class="main-title">GLOBAL VISUAL CULTURE</h1>
-        <p class="sub-title">MOODBOARD & AESTHETIC ENGINE</p>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown("<h1 class='main-title'>全球视觉文化 Moodboard</h1>", unsafe_allow_html=True)
+st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_allow_html=True)
 
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
