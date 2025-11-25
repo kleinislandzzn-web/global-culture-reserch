@@ -2,6 +2,7 @@ import streamlit as st
 import wikipedia
 import requests
 import random
+import time
 from itertools import zip_longest
 
 # ==========================================
@@ -27,7 +28,7 @@ def local_css():
         /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (完美居中对齐) --- */
+        /* --- 1. 主分类按钮 --- */
         div[data-testid="column"] .stButton button {
             width: 100%;
             height: 48px !important; 
@@ -81,6 +82,14 @@ def local_css():
             margin-top: 10px;
         }
 
+        /* --- 3. AI 生成模块样式 --- */
+        .ai-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            font-weight: bold !important;
+        }
+
         /* --- 字体与标题 --- */
         .main-title {
             font-family: "PingFang SC", "Helvetica Neue", sans-serif;
@@ -91,22 +100,11 @@ def local_css():
             text-align: center; color: #888; font-size: 0.9em; 
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
-        
-        /* 分类标题 */
         .category-header {
-            text-align: center; 
-            font-size: 12px; 
-            color: #999; 
-            font-weight: 700;
-            letter-spacing: 1px; 
-            margin-bottom: 15px; 
-            text-transform: uppercase;
-            border-bottom: 2px solid #f0f0f0; 
-            padding-bottom: 8px; 
-            display: block;
-            height: 25px; 
-            line-height: 16px;
-            width: 100%;
+            text-align: center; font-size: 12px; color: #999; font-weight: 700;
+            letter-spacing: 1px; margin-bottom: 15px; text-transform: uppercase;
+            border-bottom: 2px solid #f0f0f0; padding-bottom: 8px; display: block;
+            height: 25px; line-height: 16px; width: 100%;
         }
 
         /* --- 图片与组件 --- */
@@ -130,17 +128,8 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典 & 🚫 博物馆屏蔽名单
+# 3. 视觉优化字典
 # ==========================================
-
-# 定义哪些词属于“现代/科幻/抽象”风格，绝对不要去搜博物馆
-MODERN_EXCLUDE_LIST = [
-    "retro futurism", "cyberpunk", "y2k", "gorpcore", "mob wife", "pop culture",
-    "k-pop", "hollywood", "bollywood", "steampunk", "frutiger aero", "dreamcore", 
-    "solarpunk", "acid pixie", "vaporwave", "liminal space", "glitch core", 
-    "bioluminescence", "chromatic", "knolling", "neon", "tech", "sci-fi"
-]
-
 VISUAL_DICT = {
     # --- 🛑 BUG FIXES ---
     "niqab": "niqab clothing",
@@ -195,18 +184,22 @@ VISUAL_DICT = {
     "knolling": "knolling photography objects organized neatly flat lay overhead"
 }
 
+# 🚫 博物馆屏蔽名单
+MODERN_EXCLUDE_LIST = [
+    "retro futurism", "cyberpunk", "y2k", "gorpcore", "mob wife", "pop culture",
+    "k-pop", "hollywood", "bollywood", "steampunk", "frutiger aero", "dreamcore", 
+    "solarpunk", "acid pixie", "vaporwave", "liminal space", "glitch core", 
+    "bioluminescence", "chromatic", "knolling", "neon", "tech", "sci-fi"
+]
+
 # ==========================================
-# 4. 智能路由搜图引擎 (Smart Routing)
+# 4. 搜图 & AI 引擎
 # ==========================================
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
     is_optimized = False
-    
-    # 1. 检查是否属于“现代风格” -> 决定是否屏蔽博物馆
-    # 只要 query 包含屏蔽名单里的词，就不搜博物馆
     is_modern_style = any(term in clean_query for term in MODERN_EXCLUDE_LIST)
     
-    # 2. 处理搜索词
     if clean_query in VISUAL_DICT:
         search_term = VISUAL_DICT[clean_query]
         museum_term = user_query 
@@ -215,24 +208,19 @@ def get_visuals(user_query, uhd_mode):
         search_term = f"{user_query} aesthetic"
         museum_term = user_query
 
-    # 3. 请求 Pexels & Unsplash (总是请求)
     limit_per_source = 6
     fetch_buffer = 12 
     
     p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_buffer)
     u_photos, u_err = _fetch_unsplash(search_term, uhd_mode, fetch_buffer)
     
-    # 4. 根据风格决定是否请求博物馆
     if not is_modern_style:
         a_photos, a_err = _fetch_aic(museum_term, fetch_buffer)
         m_photos, m_err = _fetch_met(museum_term, fetch_buffer)
     else:
-        # 如果是现代风格，博物馆结果强制为空
         a_photos, a_err = [], None
         m_photos, m_err = [], None
     
-    # 5. 截取 (增加一点权重给 P/U，如果是现代风格)
-    # 如果屏蔽了博物馆，Pexels 和 Unsplash 各展示更多，填补空缺
     if is_modern_style:
         p_final = p_photos[:9]
         u_final = u_photos[:9]
@@ -244,7 +232,6 @@ def get_visuals(user_query, uhd_mode):
         a_final = a_photos[:limit_per_source]
         m_final = m_photos[:limit_per_source]
     
-    # 6. 交叉合并
     combined_photos = []
     for p, u, a, m in zip_longest(p_final, u_final, a_final, m_final):
         if p: combined_photos.append(p)
@@ -252,9 +239,7 @@ def get_visuals(user_query, uhd_mode):
         if a: combined_photos.append(a)
         if m: combined_photos.append(m)
         
-    # 7. 错误处理
-    error_msg = ""
-    return combined_photos, error_msg, search_term, is_optimized
+    return combined_photos, "", search_term, is_optimized
 
 def _fetch_pexels(query, uhd_mode, limit):
     headers = {"Authorization": PEXELS_API_KEY}
@@ -271,8 +256,7 @@ def _fetch_pexels(query, uhd_mode, limit):
                 "source": "Pexels"
             } for p in filtered], None
         return [], f"Pexels {res.status_code}"
-    except Exception as e:
-        return [], str(e)
+    except Exception as e: return [], str(e)
 
 def _fetch_unsplash(query, uhd_mode, limit):
     headers = {"Authorization": f"Client-ID {UNSPLASH_ACCESS_KEY}"}
@@ -288,18 +272,12 @@ def _fetch_unsplash(query, uhd_mode, limit):
                 "alt": p['alt_description'] or p['description'] or "Unsplash", "res": f"{p['width']}x{p['height']}",
                 "source": "Unsplash"
             } for p in filtered], None
-        elif res.status_code == 403: return [], "Limit Reached"
-        return [], f"Status {res.status_code}"
-    except Exception as e:
-        return [], str(e)
+        return [], f"Unsplash {res.status_code}"
+    except Exception as e: return [], str(e)
 
 def _fetch_aic(query, limit):
-    """芝加哥艺术博物馆 (AIC)"""
     url = "https://api.artic.edu/api/v1/artworks/search"
-    params = {
-        "q": query, "limit": limit * 2, "fields": "id,title,image_id,artist_display",
-        "query[term][is_public_domain]": "true"
-    }
+    params = {"q": query, "limit": limit * 2, "fields": "id,title,image_id,artist_display", "query[term][is_public_domain]": "true"}
     try:
         res = requests.get(url, params=params)
         if res.status_code == 200:
@@ -318,7 +296,6 @@ def _fetch_aic(query, limit):
     except Exception as e: return [], str(e)
 
 def _fetch_met(query, limit):
-    """大都会博物馆 (The Met)"""
     search_url = "https://collectionapi.metmuseum.org/public/collection/v1/search"
     params = {"q": query, "hasImages": "true", "isPublicDomain": "true"}
     try:
@@ -337,7 +314,7 @@ def _fetch_met(query, limit):
                     if img_url:
                         formatted.append({
                             "src": img_url, "url": data.get('objectURL', '#'),
-                            "alt": f"{data.get('title', 'Artwork')} - {data.get('artistDisplayName','Unknown')}",
+                            "alt": f"{data.get('title', 'Artwork')}",
                             "res": "The Met", "source": "The Met"
                         })
             return formatted, None
@@ -366,22 +343,19 @@ st.markdown("<p class='sub-title'>Global Visual Culture Moodboard</p>", unsafe_a
 if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
-# --- 1. 搜索栏与设置 ---
+# --- 1. 搜索栏 ---
 c_sp1, c_search, c_opt, c_sp2 = st.columns([2, 4, 1, 2])
-
 with c_search:
     user_input = st.text_input("Search", value=st.session_state.search_query, placeholder="Type concept...", label_visibility="collapsed")
     if user_input: st.session_state.search_query = user_input
-
 with c_opt:
     uhd_mode = st.checkbox("💎 Ultra HD", value=False)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 核心分类网格 (4列布局) ---
+# --- 2. 分类网格 ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
-
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
@@ -409,7 +383,7 @@ target_query = st.session_state.search_query if st.session_state.search_query el
 is_default = not st.session_state.search_query
 
 if target_query:
-    with st.spinner(f"Curating visual mix from Pexels, Unsplash, The Met & AIC..."):
+    with st.spinner(f"Curating visual mix..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
@@ -422,7 +396,6 @@ if target_query:
 
     col_left, col_right = st.columns([1, 2.5])
     
-    # --- 左侧信息栏 ---
     with col_left:
         st.markdown("### 📖 Context")
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
@@ -437,29 +410,45 @@ if target_query:
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
-        # --- ✨ Explore Aesthetics (Link Mode) ---
+        # --- Explore Aesthetics ---
         st.markdown("---")
         st.markdown("### ✨ Explore Aesthetics")
-        
         soul_tags = [
             "🫧 #FrutigerAero", "👁️ #Dreamcore", "☀️ #Solarpunk", "🧚‍♀️ #AcidPixie", 
             "📜 #DarkAcademia", "🗿 #Vaporwave", "🚪 #LiminalSpace", "📺 #GlitchCore",
             "🍄 #Bioluminescence", "🌈 #Chromatic", "📸 #Knolling", "🏛️ #LightAcademia"
         ]
-        
         tags_html = "<div class='tag-container'>"
         for tag in soul_tags:
             clean_tag = tag.split("#")[-1] 
             tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link' style='text-decoration:none !important;'>{tag}</a>"
         tags_html += "</div>"
-        
         st.markdown(tags_html, unsafe_allow_html=True)
 
-    # --- 右侧图片 (混合源) ---
-    with col_right:
-        st.markdown(f"### 🖼️ Visual Board (Mixed Sources)")
-        if error_msg and not photos: st.warning(error_msg)
+        # --- 🤖 AI 生成模块 (新增) ---
+        st.markdown("---")
+        st.markdown("### 🤖 AI Imagination")
+        st.caption(f"Create specific visuals for: **{target_query}**")
         
+        # AI Prompt Input
+        ai_prompt_input = st.text_area("Prompt", value=f"Cinematic shot of {target_query}, high detail, 8k, trending on artstation", height=80, label_visibility="collapsed")
+        
+        if st.button("✨ Generate with Flux", type="primary"):
+            with st.spinner("Dreaming..."):
+                # Pollinations API (Flux Model)
+                seed = random.randint(0, 99999)
+                encoded_prompt = requests.utils.quote(ai_prompt_input)
+                # 使用 Pollinations 的 Flux 接口 (width/height 为竖屏)
+                ai_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1536&seed={seed}&model=flux"
+                
+                # 显示结果
+                st.image(ai_image_url, caption=f"AI Generated: {target_query}", use_container_width=True)
+                st.markdown(f"[⬇️ Download AI Image]({ai_image_url})")
+
+    # --- Right: Images ---
+    with col_right:
+        st.markdown(f"### 🖼️ Visual Board")
+        if error_msg and not photos: st.warning(error_msg)
         if photos:
             img_cols = st.columns(3)
             for idx, photo in enumerate(photos):
@@ -469,15 +458,12 @@ if target_query:
                         <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
                             <div style="display:flex; justify-content:space-between;">
                                 <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <div>
-                                    <span class="source-badge">Via {photo['source']}</span>
-                                    <span style="color:#aaa; background:#f4f4f4; padding:1px 4px; border-radius:3px; font-size:9px; margin-left:4px;">{photo.get('res','HD')}</span>
-                                </div>
+                                <div><span class="source-badge">Via {photo['source']}</span></div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
         else:
-            st.warning("No images found." if uhd_mode else "No visuals found.")
+            st.warning("No images found.")
 
 st.markdown("---")
 st.markdown("<div class='footer'>Powered by Streamlit | Pexels, Unsplash, The Met & AIC<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
