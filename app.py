@@ -5,7 +5,7 @@ import random
 from itertools import zip_longest
 
 # ==========================================
-# 0. 全局配置
+# 0. URL 参数处理 & 全局配置
 # ==========================================
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 
@@ -18,103 +18,134 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. API 配置 (保持原样)
+# 1. 配置区域
 # ==========================================
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (修正：标题对齐 + 图像源对齐)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 全局列垂直居中 --- */
-        div[data-testid="column"] { align-items: center; }
+        /* --- 全局列调整 --- */
+        div[data-testid="column"] {
+            align-items: center;
+        }
         div[data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 修正 1：强制结果页标题基线对齐 --- */
-        .result-header {
-            font-family: "Helvetica Neue", sans-serif;
-            font-size: 22px;
-            font-weight: 700;
-            color: #111;
-            margin-bottom: 20px;
-            padding-top: 5px; /* 微调顶部距离 */
-            line-height: 1.2;
-            display: flex;
-            align-items: center;
-            height: 30px; /* 强制高度一致 */
-        }
-
-        /* --- 修正 2：图像下方信息栏 --- */
-        .img-caption-container {
-            width: 100%;
-            margin-top: 8px;
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between; /* 左右两端对齐 */
-            align-items: center;
-            padding: 0 1px; /* 微调防止溢出 */
-        }
-        
-        .download-link {
-            color: #333; 
-            font-weight: 600; 
-            font-size: 12px; 
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-        }
-        .download-link:hover { color: #002FA7; }
-
-        .source-badge {
-            font-size: 10px; 
-            color: #888; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-            border: 1px solid #eee; 
-            padding: 2px 6px; 
-            border-radius: 4px;
-            background: #fff;
-            /* 确保文本靠右 */
-            text-align: right;
-        }
-
-        /* --- 之前的网格对齐样式 (保留) --- */
+        /* --- 标题与分割线 --- */
         .category-header {
-            text-align: center; font-size: 13px; color: #999; font-weight: 700;
-            letter-spacing: 1.5px; margin-bottom: 12px; text-transform: uppercase;
-            padding-bottom: 8px; border-bottom: 2px solid #f0f0f0; display: block; width: 100%;
-        }
-        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] { gap: 0.5rem; }
-        
-        div[data-testid="column"] .stButton button {
-            width: 100% !important; height: 50px !important; min-height: 50px !important;
-            border-radius: 10px; border: 1px solid #f5f5f5; background-color: #fff;
-            color: #444; font-size: 13px; font-weight: 500;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            display: flex !important; align-items: center !important; justify-content: center !important;
-            margin: 0 !important; padding: 0 4px !important;
-        }
-        div[data-testid="column"] .stButton button p {
-            line-height: 1.2 !important; margin: 0 !important; white-space: nowrap; 
-            overflow: hidden; text-overflow: ellipsis; width: 100%; display: block !important;
-        }
-        div[data-testid="column"] .stButton button:hover {
-            border-color: #002FA7; color: #002FA7; background-color: #f8faff;
-            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,47,167,0.08); z-index: 2;
+            text-align: center; 
+            font-size: 13px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1.5px; 
+            margin-bottom: 12px; 
+            text-transform: uppercase;
+            padding-bottom: 8px; 
+            border-bottom: 2px solid #f0f0f0; 
+            display: block;
+            width: 100%;
         }
 
-        /* --- 其他辅助样式 --- */
-        .tag-link { display: inline-block; color: #999; text-decoration: none !important; font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px; font-family: "Helvetica Neue", sans-serif; transition: color 0.2s; }
+        /* --- 按钮网格样式 --- */
+        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
+            gap: 0.5rem;
+        }
+
+        /* 按钮本体样式 */
+        div[data-testid="column"] .stButton button {
+            width: 100% !important;
+            height: 50px !important;       
+            min-height: 50px !important;
+            max-height: 50px !important;
+            
+            border-radius: 10px;
+            border: 1px solid #f5f5f5;
+            background-color: #fff;
+            color: #444;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            
+            margin: 0 !important; 
+            padding: 0 4px !important;
+        }
+        
+        /* 按钮内部文字 */
+        div[data-testid="column"] .stButton button p {
+            font-size: 13px;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            margin: 0 !important;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            display: block !important;
+        }
+        
+        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100% !important;
+        }
+
+        /* 悬停效果 */
+        div[data-testid="column"] .stButton button:hover {
+            border-color: #002FA7;
+            color: #002FA7;
+            background-color: #f8faff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,47,167,0.08);
+            z-index: 2;
+        }
+
+        /* --- Tag 链接样式 --- */
+        .tag-link {
+            display: inline-block; color: #999; text-decoration: none !important;
+            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
+            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
+        }
         .tag-link:hover { color: #333; opacity: 0.8; }
         .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-        .main-title { font-family: "PingFang SC", "Helvetica Neue", sans-serif; font-size: 3.2em; color: #111; text-align: center; margin-top: -20px; margin-bottom: 0px; font-weight: 900; letter-spacing: -1px; }
-        .sub-title { text-align: center; color: #888; font-size: 0.9em; margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase; }
-        div[data-testid="stImage"] img { height: 450px !important; object-fit: cover !important; border-radius: 8px !important; width: 100% !important; }
-        .pinterest-btn { display: inline-block; text-decoration: none; background-color: #E60023; color: white !important; padding: 6px 12px; border-radius: 20px; font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s; }
+
+        /* --- 字体与标题 --- */
+        .main-title {
+            font-family: "PingFang SC", "Helvetica Neue", sans-serif;
+            font-size: 3.2em; color: #111; text-align: center; 
+            margin-top: -20px; margin-bottom: 0px; font-weight: 900; letter-spacing: -1px;
+        }
+        .sub-title {
+            text-align: center; color: #888; font-size: 0.9em; 
+            margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
+        }
+
+        /* --- 图片与组件 --- */
+        div[data-testid="stImage"] img {
+            height: 450px !important; object-fit: cover !important; 
+            border-radius: 8px !important; width: 100% !important;
+        }
+        .pinterest-btn {
+            display: inline-block; text-decoration: none; background-color: #E60023;
+            color: white !important; padding: 6px 12px; border-radius: 20px;
+            font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
+        }
         .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
+        
+        .source-badge {
+            font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
+            border: 1px solid #eee; padding: 2px 5px; border-radius: 3px;
+            background-color: #fcfcfc;
+        }
+
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
@@ -166,7 +197,7 @@ MODERN_EXCLUDE_LIST = [
 ]
 
 # ==========================================
-# 4. 搜图引擎 (带缓存)
+# 4. 搜图引擎
 # ==========================================
 @st.cache_data(ttl=3600)
 def _fetch_pexels(query, uhd_mode, limit):
@@ -252,16 +283,32 @@ def _fetch_met(query, limit):
         return [], f"Met Search {res.status_code}"
     except Exception as e: return [], str(e)
 
+# --- 优化后的维基百科处理函数 ---
 @st.cache_data(ttl=3600)
 def get_wiki_summary(query):
     try:
         wikipedia.set_lang("en")
-        res = wikipedia.search(query)
-        if res:
-            page = wikipedia.page(res[0], auto_suggest=False)
-            return page.summary[0:600] + "...", page.url, res[0]
+        search_results = wikipedia.search(query)
+        if not search_results:
+            return None, "#", None
+        
+        target_term = search_results[0]
+        try:
+            # 尝试直接获取
+            page = wikipedia.page(target_term, auto_suggest=False)
+            return page.summary[0:600] + "...", page.url, target_term
+        except wikipedia.DisambiguationError as e:
+            # 处理歧义：自动选择第一个推荐项
+            try:
+                first_option = e.options[0]
+                page = wikipedia.page(first_option, auto_suggest=False)
+                return page.summary[0:600] + "...", page.url, first_option
+            except:
+                return None, "#", None
+        except wikipedia.PageError:
+            return None, "#", None
+    except Exception:
         return None, "#", None
-    except: return None, "#", None
 
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
@@ -308,6 +355,7 @@ def get_visuals(user_query, uhd_mode):
         if m: combined_photos.append(m)
     
     random.shuffle(combined_photos)
+        
     return combined_photos, "", search_term, is_optimized
 
 # ==========================================
@@ -356,7 +404,7 @@ with st.container():
 
 st.markdown("<hr>", unsafe_allow_html=True)
 
-# --- 3. 结果渲染 (布局微调版) ---
+# --- 3. 结果渲染 ---
 target_query = st.session_state.search_query if st.session_state.search_query else "Retro Futurism"
 is_default = not st.session_state.search_query
 
@@ -365,21 +413,23 @@ if target_query:
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
-    # [核心修改 1] 创建左右分栏，并将标题放入栏内以确保水平对齐
+    # 核心修改：移除这里的外部 markdown，将标题逻辑放入下面的列中以确保对齐
+    
     col_left, col_right = st.columns([1, 2.5])
     
-    # --- 左侧栏：标题 + 上下文 ---
+    # --- 左栏：Context & Trending ---
     with col_left:
-        # 1. 左侧标题 (Trending / Result) - 强制与右侧 "Visual Board" 对齐
+        # 1. 标题对齐修复：使用内联样式强制去除 margin-top，与右侧严格对齐
         if is_default:
-            st.markdown(f"<div class='result-header'>🔥 Trending: <span style='color:#002FA7; margin-left:6px'>{target_query.title()}</span></div>", unsafe_allow_html=True)
-        elif is_opt:
-            st.markdown(f"<div class='result-header'>🎨 Optimized: <span style='font-size:0.9em; margin-left:6px; color:#444'>{optimized_term}</span></div>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span></h3>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<div class='result-header'>🔍 Result: <span style='color:#444; margin-left:6px'>{optimized_term}</span></div>", unsafe_allow_html=True)
-            
-        # 2. Context 区域
-        st.markdown("### 📖 Context")
+            st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>📖 Context</h3>", unsafe_allow_html=True)
+            if is_opt:
+                st.caption(f"🎨 Optimized: `{optimized_term}`")
+            else:
+                st.caption(f"🔍 Result: `{optimized_term}`")
+
+        # 内容区域
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
         if wiki_text:
             st.markdown(f"{wiki_text}")
@@ -406,10 +456,10 @@ if target_query:
         tags_html += "</div>"
         st.markdown(tags_html, unsafe_allow_html=True)
 
-    # --- 右侧栏：标题 + 图片流 ---
+    # --- 右栏：Images ---
     with col_right:
-        # 1. 右侧标题 (使用相同的 class 确保对齐)
-        st.markdown(f"<div class='result-header'>🖼️ Visual Board</div>", unsafe_allow_html=True)
+        # 2. 标题对齐修复：同样强制去除 margin-top
+        st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🖼️ Visual Board</h3>", unsafe_allow_html=True)
         
         if error_msg and not photos: st.warning(error_msg)
         if photos:
@@ -417,11 +467,16 @@ if target_query:
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
                     st.image(photo['src'], use_container_width=True)
-                    # [核心修改 2] 图像下方说明栏 - 强制 Flex 布局两端对齐
+                    
+                    # 3. 图像源对齐修复：
+                    # 使用 justify-content: space-between 将 "Download" 放在最左，"Source" 放在最右
+                    # 移除了额外的 margin，确保紧贴边缘
                     st.markdown(f"""
-                        <div class="img-caption-container">
-                            <a href="{photo['url']}" target="_blank" class="download-link">⬇️</a>
-                            <span class="source-badge">Via {photo['source']}</span>
+                        <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
+                                <div style="text-align:right;"><span class="source-badge">Via {photo['source']}</span></div>
+                            </div>
                         </div>
                     """, unsafe_allow_html=True)
         else:
