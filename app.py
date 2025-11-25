@@ -2,7 +2,7 @@ import streamlit as st
 import wikipedia
 import requests
 import random
-import time
+import io
 from itertools import zip_longest
 
 # ==========================================
@@ -80,14 +80,6 @@ def local_css():
             flex-wrap: wrap;
             gap: 5px;
             margin-top: 10px;
-        }
-
-        /* --- 3. AI 生成模块样式 --- */
-        .ai-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: white !important;
-            border: none !important;
-            font-weight: bold !important;
         }
 
         /* --- 字体与标题 --- */
@@ -425,25 +417,39 @@ if target_query:
         tags_html += "</div>"
         st.markdown(tags_html, unsafe_allow_html=True)
 
-        # --- 🤖 AI 生成模块 (新增) ---
+        # --- 🤖 AI 生成模块 (修复版: 强制下载图片流) ---
         st.markdown("---")
         st.markdown("### 🤖 AI Imagination")
-        st.caption(f"Create specific visuals for: **{target_query}**")
+        st.caption(f"Create visuals for: **{target_query}**")
         
-        # AI Prompt Input
         ai_prompt_input = st.text_area("Prompt", value=f"Cinematic shot of {target_query}, high detail, 8k, trending on artstation", height=80, label_visibility="collapsed")
         
         if st.button("✨ Generate with Flux", type="primary"):
-            with st.spinner("Dreaming..."):
-                # Pollinations API (Flux Model)
-                seed = random.randint(0, 99999)
-                encoded_prompt = requests.utils.quote(ai_prompt_input)
-                # 使用 Pollinations 的 Flux 接口 (width/height 为竖屏)
-                ai_image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1536&seed={seed}&model=flux"
-                
-                # 显示结果
-                st.image(ai_image_url, caption=f"AI Generated: {target_query}", use_container_width=True)
-                st.markdown(f"[⬇️ Download AI Image]({ai_image_url})")
+            with st.spinner("Dreaming... (Wait for API)"):
+                try:
+                    seed = random.randint(0, 99999)
+                    encoded_prompt = requests.utils.quote(ai_prompt_input)
+                    # 使用 Pollinations Flux 模型
+                    ai_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1536&seed={seed}&model=flux"
+                    
+                    # 关键修改：服务器端下载图片数据
+                    ai_res = requests.get(ai_url, timeout=30)
+                    if ai_res.status_code == 200:
+                        # 将二进制数据转换为 ByteIO 供 st.image 使用
+                        image_bytes = io.BytesIO(ai_res.content)
+                        st.image(image_bytes, caption=f"AI Generated: {target_query}", use_container_width=True)
+                        
+                        # 增加下载按钮
+                        st.download_button(
+                            label="⬇️ Download AI Image",
+                            data=ai_res.content,
+                            file_name=f"ai_generated_{target_query}.jpg",
+                            mime="image/jpeg"
+                        )
+                    else:
+                        st.error(f"AI Error: {ai_res.status_code}")
+                except Exception as e:
+                    st.error(f"Generation Failed: {str(e)}")
 
     # --- Right: Images ---
     with col_right:
