@@ -19,7 +19,7 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (内容居中终极修复)
+# 2. CSS 样式 (终极对齐版)
 # ==========================================
 def local_css():
     st.markdown("""
@@ -27,9 +27,11 @@ def local_css():
         /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (核心修复：内容绝对居中) --- */
-        div[data-testid="column"] .stButton button {
-            width: 100% !important;
+        /* --- 1. 主分类按钮 (轴心对齐修复) --- */
+        /* 使用 :not(:first-child) 排除左侧栏，只针对右侧主区域 */
+        div[data-testid="column"]:not(:first-child) .stButton button {
+            /* 关键：宽度不设为100%，留出空间做居中 */
+            width: 96% !important;
             height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
@@ -40,30 +42,29 @@ def local_css():
             font-weight: 500;
             transition: all 0.2s;
             
-            /* 核心修复 1：Flexbox 容器居中 */
+            /* Flexbox 内容居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
             
-            /* 移除所有边距 */
-            margin: 0 !important;
+            /* 文本处理 */
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis;
             padding: 0 5px !important;
+            
+            /* 核心修复：外边距自动，强制在列中水平居中 */
+            margin-left: auto !important;
+            margin-right: auto !important;
+            display: block; /* 确保 margin auto 生效 */
         }
         
-        /* 核心修复 2：强制内部文字/Markdown容器居中 */
+        /* 强制内部元素居中 */
         div[data-testid="column"] .stButton button p {
             text-align: center !important;
-            width: 100% !important;
-            margin: 0 !important;
-            display: block !important;
-        }
-        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
+            width: 100%;
         }
 
-        /* 悬停效果 */
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
@@ -72,7 +73,7 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 2. Tag 纯文本链接样式 --- */
+        /* --- 2. Tag 纯文本链接样式 (无边框/无背景) --- */
         .tag-link {
             display: inline-block;
             color: #999;
