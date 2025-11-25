@@ -369,14 +369,13 @@ with c_opt:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 分类网格 (修复版: 使用 Spacers 强制居中) ---
+# --- 2. 分类网格 ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            # 核心修复：左右各加 0.1 的留白，挤压中间 1,1 的按钮列
-            # 这会让按钮组整体向中间靠拢，对齐上方的标题
+            # 核心修复：使用 Spacers 挤压中间列，实现整体居中
             _, sc1, sc2, _ = st.columns([0.1, 1, 1, 0.1], gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
@@ -452,11 +451,13 @@ if target_query:
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
                     st.image(photo['src'], use_container_width=True)
+                    
+                    # 核心修复：使用 flex 布局让 "Via Source" 强制右对齐
                     st.markdown(f"""
                         <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
-                            <div style="display:flex; justify-content:space-between;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                 <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <div><span class="source-badge">Via {photo['source']}</span></div>
+                                <div style="text-align:right; flex-grow:1;"><span class="source-badge">Via {photo['source']}</span></div>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
