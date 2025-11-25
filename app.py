@@ -2,6 +2,7 @@ import streamlit as st
 import wikipedia
 import requests
 import random
+import io
 from itertools import zip_longest
 
 # ==========================================
@@ -27,11 +28,9 @@ def local_css():
         /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (轴心对齐修复) --- */
-        /* 使用 :not(:first-child) 排除左侧栏，只针对右侧主区域 */
-        div[data-testid="column"]:not(:first-child) .stButton button {
-            /* 关键：宽度不设为100%，留出空间做居中 */
-            width: 96% !important;
+        /* --- 1. 主分类按钮 (强制填满+内部居中) --- */
+        div[data-testid="column"] .stButton button {
+            width: 100% !important; /* 填满所在的(被挤压后的)列 */
             height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
@@ -42,7 +41,7 @@ def local_css():
             font-weight: 500;
             transition: all 0.2s;
             
-            /* Flexbox 内容居中 */
+            /* Flexbox 内容绝对居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
@@ -51,15 +50,13 @@ def local_css():
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
-            padding: 0 5px !important;
             
-            /* 核心修复：外边距自动，强制在列中水平居中 */
-            margin-left: auto !important;
-            margin-right: auto !important;
-            display: block; /* 确保 margin auto 生效 */
+            /* 移除边距，由外部Column控制间距 */
+            margin: 0 !important;
+            padding: 0 5px !important;
         }
         
-        /* 强制内部元素居中 */
+        /* 强制内部文字容器居中 */
         div[data-testid="column"] .stButton button p {
             text-align: center !important;
             width: 100%;
@@ -73,7 +70,7 @@ def local_css():
             box-shadow: 0 2px 8px rgba(0,47,167,0.1);
         }
 
-        /* --- 2. Tag 纯文本链接样式 (无边框/无背景) --- */
+        /* --- 2. Tag 纯文本链接样式 --- */
         .tag-link {
             display: inline-block;
             color: #999;
@@ -372,13 +369,15 @@ with c_opt:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 分类网格 ---
+# --- 2. 分类网格 (修复版: 使用 Spacers 强制居中) ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2, gap="small")
+            # 核心修复：左右各加 0.1 的留白，挤压中间 1,1 的按钮列
+            # 这会让按钮组整体向中间靠拢，对齐上方的标题
+            _, sc1, sc2, _ = st.columns([0.1, 1, 1, 0.1], gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
                 if target.button(label, key=f"btn_{val}_{i}"):
