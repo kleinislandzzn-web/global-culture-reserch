@@ -18,20 +18,21 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. 配置区域
+# 1. 配置区域 (请确保已配置 .streamlit/secrets.toml)
 # ==========================================
+# ⚠️ 请确保你使用了 secrets 或环境变量，这里为了演示直接赋值，生产环境请务必隐藏 Key
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式
+# 2. CSS 样式 (UI 终极修复：完美网格对齐)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
         /* --- 全局列调整 --- */
         div[data-testid="column"] {
-            align-items: center;
+            align-items: center; /* 垂直方向居中 */
         }
         div[data-testid="stCheckbox"] { margin-top: 12px; }
 
@@ -61,7 +62,6 @@ def local_css():
             height: 50px !important;       
             min-height: 50px !important;
             max-height: 50px !important;
-            
             border-radius: 10px;
             border: 1px solid #f5f5f5;
             background-color: #fff;
@@ -70,11 +70,9 @@ def local_css():
             font-weight: 500;
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
             transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            
             margin: 0 !important; 
             padding: 0 4px !important;
         }
@@ -85,9 +83,9 @@ def local_css():
             line-height: 1.2 !important;
             text-align: center !important;
             margin: 0 !important;
-            white-space: nowrap;
+            white-space: nowrap; 
             overflow: hidden;
-            text-overflow: ellipsis;
+            text-overflow: ellipsis; 
             width: 100%;
             display: block !important;
         }
@@ -128,11 +126,26 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
 
-        /* --- 图片与组件 --- */
-        div[data-testid="stImage"] img {
-            height: 450px !important; object-fit: cover !important; 
-            border-radius: 8px !important; width: 100% !important;
+        /* --- 核心修复：统一图片尺寸与对齐 --- */
+        div[data-testid="stImage"] {
+            margin-bottom: 0px !important; /* 移除图片与下方文字的默认间距 */
         }
+
+        div[data-testid="stImage"] img {
+            /* 1. 强制统一高度 */
+            height: 400px !important; 
+            min-height: 400px !important;
+            max-height: 400px !important;
+            
+            /* 2. 强制统一宽度 (填满列宽) */
+            width: 100% !important; 
+            
+            /* 3. 关键：裁切图片以适应尺寸，防止变形 */
+            object-fit: cover !important; 
+            
+            border-radius: 8px !important;
+        }
+        
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
             color: white !important; padding: 6px 12px; border-radius: 20px;
@@ -141,9 +154,9 @@ def local_css():
         .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
         
         .source-badge {
-            font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
-            border: 1px solid #eee; padding: 2px 5px; border-radius: 3px;
-            background-color: #fcfcfc;
+            font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
+            border: 1px solid #eee; padding: 2px 6px; border-radius: 4px;
+            background-color: #fff;
         }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -283,32 +296,24 @@ def _fetch_met(query, limit):
         return [], f"Met Search {res.status_code}"
     except Exception as e: return [], str(e)
 
-# --- 优化后的维基百科处理函数 ---
 @st.cache_data(ttl=3600)
 def get_wiki_summary(query):
     try:
         wikipedia.set_lang("en")
         search_results = wikipedia.search(query)
-        if not search_results:
-            return None, "#", None
-        
+        if not search_results: return None, "#", None
         target_term = search_results[0]
         try:
-            # 尝试直接获取
             page = wikipedia.page(target_term, auto_suggest=False)
             return page.summary[0:600] + "...", page.url, target_term
         except wikipedia.DisambiguationError as e:
-            # 处理歧义：自动选择第一个推荐项
             try:
                 first_option = e.options[0]
                 page = wikipedia.page(first_option, auto_suggest=False)
                 return page.summary[0:600] + "...", page.url, first_option
-            except:
-                return None, "#", None
-        except wikipedia.PageError:
-            return None, "#", None
-    except Exception:
-        return None, "#", None
+            except: return None, "#", None
+        except wikipedia.PageError: return None, "#", None
+    except Exception: return None, "#", None
 
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
@@ -413,13 +418,10 @@ if target_query:
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
-    # 核心修改：移除这里的外部 markdown，将标题逻辑放入下面的列中以确保对齐
-    
     col_left, col_right = st.columns([1, 2.5])
     
-    # --- 左栏：Context & Trending ---
+    # --- 左栏 ---
     with col_left:
-        # 1. 标题对齐修复：使用内联样式强制去除 margin-top，与右侧严格对齐
         if is_default:
             st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span></h3>", unsafe_allow_html=True)
         else:
@@ -429,7 +431,6 @@ if target_query:
             else:
                 st.caption(f"🔍 Result: `{optimized_term}`")
 
-        # 内容区域
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
         if wiki_text:
             st.markdown(f"{wiki_text}")
@@ -458,24 +459,25 @@ if target_query:
 
     # --- 右栏：Images ---
     with col_right:
-        # 2. 标题对齐修复：同样强制去除 margin-top
         st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🖼️ Visual Board</h3>", unsafe_allow_html=True)
         
         if error_msg and not photos: st.warning(error_msg)
         if photos:
-            img_cols = st.columns(3)
+            # 使用 gap="small" 让图片之间稍微紧凑一点，更像 Moodboard
+            img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
+                    # 1. 图片渲染 (CSS已强制统一宽度和高度)
                     st.image(photo['src'], use_container_width=True)
                     
-                    # 3. 图像源对齐修复：
-                    # 使用 justify-content: space-between 将 "Download" 放在最左，"Source" 放在最右
-                    # 移除了额外的 margin，确保紧贴边缘
+                    # 2. 标签栏
+                    # width: 100% 确保占满列宽
+                    # margin: 0 和 padding: 0 确保没有内边距导致的不对齐
                     st.markdown(f"""
-                        <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <div style="text-align:right;"><span class="source-badge">Via {photo['source']}</span></div>
+                        <div style="width:100%; margin-top:6px; margin-bottom:24px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <a href="{photo['url']}" target="_blank" style="color:#333; font-size:12px; font-weight:bold; text-decoration:none;">⬇️ Download</a>
+                                <span class="source-badge">Via {photo['source']}</span>
                             </div>
                         </div>
                     """, unsafe_allow_html=True)
