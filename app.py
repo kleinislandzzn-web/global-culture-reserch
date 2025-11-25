@@ -19,7 +19,7 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (对齐终极修正)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
@@ -39,15 +39,12 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            /* 核心对齐代码：Flexbox 双重居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            /* 防止文字换行 */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
-            /* 消除默认内边距干扰 */
             padding: 0 10px !important;
             margin: 0 auto !important;
         }
@@ -95,7 +92,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 (对齐修正) */
+        /* 分类标题 */
         .category-header {
             text-align: center; 
             font-size: 12px; 
@@ -104,13 +101,12 @@ def local_css():
             letter-spacing: 1px; 
             margin-bottom: 15px; 
             text-transform: uppercase;
-            /* 确保分割线宽度适中且居中 */
             border-bottom: 2px solid #f0f0f0; 
             padding-bottom: 8px; 
             display: block;
             height: 25px; 
             line-height: 16px;
-            width: 100%; /* 占满列宽以对齐下方的按钮组 */
+            width: 100%;
         }
 
         /* --- 图片与组件 --- */
@@ -137,6 +133,12 @@ def local_css():
 # 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
+    # --- 🛑 BUG FIXES ---
+    "niqab": "niqab clothing",
+    "hijab": "hijab clothing",
+    "abaya": "abaya clothing",
+    "burqa": "burqa clothing",
+    
     # --- 🔥 TRENDING ---
     "retro futurism": "retro futurism aesthetic 80s sci-fi neon synthwave chrome",
     "old money": "old money aesthetic fashion luxury ralph lauren style quiet luxury",
@@ -146,12 +148,12 @@ VISUAL_DICT = {
     "mob wife": "mob wife aesthetic fur coat leopard print sunglasses luxury",
 
     # --- 👘 FASHION ---
-    "kimono": "japanese woman wearing traditional kimono kyoto street portrait",
-    "hanfu": "traditional chinese hanfu dress portrait ethereal fairy style",
-    "sari": "indian woman wearing colorful saree portrait jewelry",
-    "qipao": "woman wearing chinese qipao shanghai vintage style portrait",
-    "kilt": "scottish man wearing traditional kilt tartan highlands",
-    "flamenco": "spanish flamenco dancer woman red dress motion",
+    "kimono": "kimono clothing",
+    "hanfu": "hanfu clothing",
+    "sari": "sari clothing",
+    "qipao": "qipao clothing",
+    "kilt": "kilt clothing",
+    "flamenco": "flamenco dress clothing",
 
     # --- 🏛️ ARCHITECTURE ---
     "bauhaus": "bauhaus architecture building geometric minimal white",
@@ -185,35 +187,51 @@ VISUAL_DICT = {
 }
 
 # ==========================================
-# 4. 混合搜图引擎逻辑
+# 4. 四源混合搜图引擎 (Pexels + Unsplash + AIC + Met)
 # ==========================================
 def get_visuals(user_query, uhd_mode):
     clean_query = user_query.lower().strip()
     is_optimized = False
     
+    # 1. 处理搜索词
     if clean_query in VISUAL_DICT:
         search_term = VISUAL_DICT[clean_query]
+        # 对于博物馆，使用原始词往往比加上 "clothing" 或 "aesthetic" 效果更好
+        # 例如：搜 "kimono" 在博物馆库里比 "kimono clothing" 结果更准
+        museum_term = user_query 
         is_optimized = True
     else:
         search_term = f"{user_query} aesthetic"
+        museum_term = user_query
 
-    fetch_limit = 15 
+    # 2. 分别请求四个 API
+    # 目标：每家取 5-6 张，混合出约 20-24 张
+    limit_per_source = 6
+    fetch_buffer = 12 
     
-    p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_limit)
-    u_photos, u_err = _fetch_unsplash(search_term, uhd_mode, fetch_limit)
+    p_photos, p_err = _fetch_pexels(search_term, uhd_mode, fetch_buffer)
+    u_photos, u_err = _fetch_unsplash(search_term, uhd_mode, fetch_buffer)
+    a_photos, a_err = _fetch_aic(museum_term, fetch_buffer)
+    m_photos, m_err = _fetch_met(museum_term, fetch_buffer) # 新增 The Met
     
-    p_final = p_photos[:9]
-    u_final = u_photos[:9]
+    # 3. 截取
+    p_final = p_photos[:limit_per_source]
+    u_final = u_photos[:limit_per_source]
+    a_final = a_photos[:limit_per_source]
+    m_final = m_photos[:limit_per_source]
     
+    # 4. 四方交叉合并 (P -> U -> A -> M -> P...)
     combined_photos = []
-    for p, u in zip_longest(p_final, u_final):
+    for p, u, a, m in zip_longest(p_final, u_final, a_final, m_final):
         if p: combined_photos.append(p)
         if u: combined_photos.append(u)
+        if a: combined_photos.append(a)
+        if m: combined_photos.append(m)
         
+    # 5. 错误处理 (静默处理，只在Debug时需要)
     error_msg = ""
-    if p_err and u_err: error_msg = f"APIs Error: {p_err} | {u_err}"
-    elif p_err: error_msg = f"Pexels Warning: {p_err}"
-    elif u_err: error_msg = f"Unsplash Warning: {u_err}"
+    # errs = [e for e in [p_err, u_err, a_err, m_err] if e]
+    # if errs: error_msg = " | ".join(errs)
         
     return combined_photos, error_msg, search_term, is_optimized
 
@@ -231,7 +249,7 @@ def _fetch_pexels(query, uhd_mode, limit):
                 "alt": p['alt'] or "Pexels", "res": f"{p['width']}x{p['height']}",
                 "source": "Pexels"
             } for p in filtered], None
-        return [], f"Status {res.status_code}"
+        return [], f"Pexels {res.status_code}"
     except Exception as e:
         return [], str(e)
 
@@ -250,9 +268,69 @@ def _fetch_unsplash(query, uhd_mode, limit):
                 "source": "Unsplash"
             } for p in filtered], None
         elif res.status_code == 403: return [], "Limit Reached"
-        return [], f"Status {res.status_code}"
+        return [], f"Unsplash {res.status_code}"
     except Exception as e:
         return [], str(e)
+
+def _fetch_aic(query, limit):
+    """芝加哥艺术博物馆 (AIC)"""
+    url = "https://api.artic.edu/api/v1/artworks/search"
+    params = {
+        "q": query, "limit": limit * 2, "fields": "id,title,image_id,artist_display",
+        "query[term][is_public_domain]": "true"
+    }
+    try:
+        res = requests.get(url, params=params)
+        if res.status_code == 200:
+            data = res.json().get("data", [])
+            formatted = []
+            for item in data:
+                img_id = item.get('image_id')
+                if img_id:
+                    img_url = f"https://www.artic.edu/iiif/2/{img_id}/full/843,/0/default.jpg"
+                    formatted.append({
+                        "src": img_url, "url": f"https://www.artic.edu/artworks/{item['id']}",
+                        "alt": f"{item['title']}", "res": "Museum Art", "source": "Art Institute"
+                    })
+            return formatted[:limit], None
+        return [], f"AIC {res.status_code}"
+    except Exception as e: return [], str(e)
+
+def _fetch_met(query, limit):
+    """大都会博物馆 (The Met)"""
+    search_url = "https://collectionapi.metmuseum.org/public/collection/v1/search"
+    # isPublicDomain=true 且 hasImages=true
+    params = {"q": query, "hasImages": "true", "isPublicDomain": "true"}
+    
+    try:
+        # 1. 搜索获取 IDs
+        res = requests.get(search_url, params=params)
+        if res.status_code == 200:
+            object_ids = res.json().get('objectIDs', [])
+            if not object_ids: return [], "No IDs"
+            
+            # 截取前 N 个 ID (Met API 需要一个个查详情，控制数量防止太慢)
+            target_ids = object_ids[:limit] 
+            formatted = []
+            
+            # 2. 遍历获取详情 (Object Details)
+            for obj_id in target_ids:
+                obj_url = f"https://collectionapi.metmuseum.org/public/collection/v1/objects/{obj_id}"
+                obj_res = requests.get(obj_url)
+                if obj_res.status_code == 200:
+                    data = obj_res.json()
+                    img_url = data.get('primaryImage')
+                    if img_url:
+                        formatted.append({
+                            "src": img_url, # Met 图片通常很大
+                            "url": data.get('objectURL', '#'),
+                            "alt": f"{data.get('title', 'Artwork')} - {data.get('artistDisplayName','Unknown')}",
+                            "res": "The Met",
+                            "source": "The Met"
+                        })
+            return formatted, None
+        return [], f"Met Search {res.status_code}"
+    except Exception as e: return [], str(e)
 
 def get_wiki_summary(query):
     try:
@@ -295,7 +373,6 @@ with st.container():
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            # 关键修正：增加 gap="small" 使左右按钮列紧凑，视觉上居中对齐标题
             sc1, sc2 = st.columns(2, gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
@@ -320,7 +397,8 @@ target_query = st.session_state.search_query if st.session_state.search_query el
 is_default = not st.session_state.search_query
 
 if target_query:
-    with st.spinner(f"Curating visual mix..."):
+    # 提示语更新
+    with st.spinner(f"Curating mix from Pexels, Unsplash, The Met & AIC..."):
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
@@ -361,15 +439,15 @@ if target_query:
         tags_html = "<div class='tag-container'>"
         for tag in soul_tags:
             clean_tag = tag.split("#")[-1] 
-            tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link' style='text-decoration:none;'>{tag}</a>"
+            tags_html += f"<a href='/?q={clean_tag}' target='_self' class='tag-link' style='text-decoration:none !important;'>{tag}</a>"
         tags_html += "</div>"
         
         st.markdown(tags_html, unsafe_allow_html=True)
 
-    # --- 右侧图片 ---
+    # --- 右侧图片 (混合源) ---
     with col_right:
         st.markdown(f"### 🖼️ Visual Board (Mixed Sources)")
-        if error_msg: st.warning(error_msg)
+        if error_msg and not photos: st.warning(error_msg) # 只有没图时才报错
         
         if photos:
             img_cols = st.columns(3)
@@ -391,4 +469,4 @@ if target_query:
             st.warning("No images > 1500px found." if uhd_mode else "No visuals found.")
 
 st.markdown("---")
-st.markdown("<div class='footer'>Powered by Streamlit | Pexels & Unsplash<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
+st.markdown("<div class='footer'>Powered by Streamlit | Pexels, Unsplash, The Met & AIC<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
