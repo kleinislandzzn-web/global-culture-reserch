@@ -19,18 +19,17 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (对齐修正版)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 布局组件微调 --- */
+        /* --- 布局微调 --- */
         div[data-testid="column"] [data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 1. 主分类按钮 (强制居中对齐修复) --- */
-        /* 针对页面中间 4 列分类区域的按钮 */
+        /* --- 1. 主分类按钮 (完美居中对齐) --- */
         div[data-testid="column"] .stButton button {
-            width: 100% !important; /* 强制占满列宽 */
+            width: 100%;
             height: 48px !important; 
             min-height: 48px !important;
             border-radius: 8px;
@@ -40,22 +39,14 @@ def local_css():
             font-size: 13px;
             font-weight: 500;
             transition: all 0.2s;
-            
-            /* 核心：Flexbox 绝对居中 */
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
-            
-            /* 文本处理 */
             white-space: nowrap; 
             overflow: hidden;
             text-overflow: ellipsis;
-            
-            /* 边距修正，确保相对于父容器居中 */
-            margin-left: auto !important;
-            margin-right: auto !important;
             padding: 0 10px !important;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            margin: 0 auto !important;
         }
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
@@ -90,7 +81,7 @@ def local_css():
             margin-top: 10px;
         }
 
-        /* --- 字体与标题 (回归简约版) --- */
+        /* --- 字体与标题 --- */
         .main-title {
             font-family: "PingFang SC", "Helvetica Neue", sans-serif;
             font-size: 3.2em; color: #111; text-align: center; 
@@ -101,7 +92,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
         
-        /* 分类标题 (对齐修正) */
+        /* 分类标题 */
         .category-header {
             text-align: center; 
             font-size: 12px; 
@@ -139,7 +130,7 @@ def local_css():
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典 (含博物馆屏蔽)
+# 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
     # --- 🛑 BUG FIXES ---
@@ -364,13 +355,14 @@ with c_opt:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- 2. 分类网格 ---
+# --- 2. 分类网格 (对齐修正) ---
 with st.container():
     c1, c2, c3, c4 = st.columns(4, gap="medium")
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            sc1, sc2 = st.columns(2, gap="small")
+            # 核心修改：使用 0.15 的留白挤压中间，实现整体居中
+            _, sc1, sc2, _ = st.columns([0.15, 1, 1, 0.15], gap="small")
             for i, (label, val) in enumerate(items):
                 target = sc1 if i % 2 == 0 else sc2
                 if target.button(label, key=f"btn_{val}_{i}"):
