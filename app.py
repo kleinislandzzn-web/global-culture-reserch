@@ -18,21 +18,21 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. 配置区域 (请确保已配置 .streamlit/secrets.toml)
+# 1. API 配置 (请确保配置 .streamlit/secrets.toml)
 # ==========================================
-# ⚠️ 请确保你使用了 secrets 或环境变量，这里为了演示直接赋值，生产环境请务必隐藏 Key
+# ⚠️ 生产环境请务必隐藏 Key
 PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (UI 终极修复：完美网格对齐)
+# 2. CSS 样式 (UI 终极修复：完美对齐版)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
         /* --- 全局列调整 --- */
         div[data-testid="column"] {
-            align-items: center; /* 垂直方向居中 */
+            align-items: center; 
         }
         div[data-testid="stCheckbox"] { margin-top: 12px; }
 
@@ -56,7 +56,6 @@ def local_css():
             gap: 0.5rem;
         }
 
-        /* 按钮本体样式 */
         div[data-testid="column"] .stButton button {
             width: 100% !important;
             height: 50px !important;       
@@ -77,7 +76,6 @@ def local_css():
             padding: 0 4px !important;
         }
         
-        /* 按钮内部文字 */
         div[data-testid="column"] .stButton button p {
             font-size: 13px;
             line-height: 1.2 !important;
@@ -96,7 +94,6 @@ def local_css():
             width: 100% !important;
         }
 
-        /* 悬停效果 */
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
@@ -105,15 +102,6 @@ def local_css():
             box-shadow: 0 4px 12px rgba(0,47,167,0.08);
             z-index: 2;
         }
-
-        /* --- Tag 链接样式 --- */
-        .tag-link {
-            display: inline-block; color: #999; text-decoration: none !important;
-            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
-            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
-        }
-        .tag-link:hover { color: #333; opacity: 0.8; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 
         /* --- 字体与标题 --- */
         .main-title {
@@ -126,24 +114,43 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
 
-        /* --- 核心修复：统一图片尺寸与对齐 --- */
+        /* --- Tag 链接 --- */
+        .tag-link {
+            display: inline-block; color: #999; text-decoration: none !important;
+            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
+            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
+        }
+        .tag-link:hover { color: #333; opacity: 0.8; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+
+        /* =================================================================
+           🔥 核心修复区：图片与文字的绝对对齐
+           ================================================================= */
+        
+        /* 1. 图片强制填满容器，无边距 */
         div[data-testid="stImage"] {
-            margin-bottom: 0px !important; /* 移除图片与下方文字的默认间距 */
+            width: 100% !important;
+            margin-bottom: 0px !important;
         }
 
         div[data-testid="stImage"] img {
-            /* 1. 强制统一高度 */
             height: 400px !important; 
             min-height: 400px !important;
             max-height: 400px !important;
-            
-            /* 2. 强制统一宽度 (填满列宽) */
             width: 100% !important; 
-            
-            /* 3. 关键：裁切图片以适应尺寸，防止变形 */
             object-fit: cover !important; 
-            
             border-radius: 8px !important;
+        }
+
+        /* 2. 修复 Markdown 容器，消除默认 Padding，确保文字能顶到边缘 */
+        div[data-testid="stMarkdownContainer"] p {
+            margin-bottom: 0px !important;
+            padding: 0px !important;
+        }
+        
+        div[data-testid="stMarkdownContainer"] {
+            padding-left: 0px !important;
+            padding-right: 0px !important;
         }
         
         .pinterest-btn {
@@ -157,6 +164,8 @@ def local_css():
             font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
             border: 1px solid #eee; padding: 2px 6px; border-radius: 4px;
             background-color: #fff;
+            /* 确保徽章内的文字不换行 */
+            white-space: nowrap; 
         }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -463,19 +472,19 @@ if target_query:
         
         if error_msg and not photos: st.warning(error_msg)
         if photos:
-            # 使用 gap="small" 让图片之间稍微紧凑一点，更像 Moodboard
+            # gap="small" 保持视觉紧凑
             img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    # 1. 图片渲染 (CSS已强制统一宽度和高度)
+                    # 1. 图像渲染 (CSS 强制填满宽 + 固定高)
                     st.image(photo['src'], use_container_width=True)
                     
-                    # 2. 标签栏
-                    # width: 100% 确保占满列宽
-                    # margin: 0 和 padding: 0 确保没有内边距导致的不对齐
+                    # 2. 标签栏 (HTML Flexbox 强制填满宽)
+                    # width: 100% !important 确保容器不缩水
+                    # display: flex; justify-content: space-between 确保左右对齐到极致
                     st.markdown(f"""
-                        <div style="width:100%; margin-top:6px; margin-bottom:24px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="width:100% !important; margin-top:6px; margin-bottom:24px; box-sizing:border-box;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                                 <a href="{photo['url']}" target="_blank" style="color:#333; font-size:12px; font-weight:bold; text-decoration:none;">⬇️ Download</a>
                                 <span class="source-badge">Via {photo['source']}</span>
                             </div>
