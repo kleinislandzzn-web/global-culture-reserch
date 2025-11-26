@@ -18,25 +18,17 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. 配置区域
+# 1. 配置区域 (已填入 Key)
 # ==========================================
-try:
-    PEXELS_API_KEY = st.secrets["api_keys"]["pexels"]
-    UNSPLASH_ACCESS_KEY = st.secrets["api_keys"]["unsplash"]
-except (FileNotFoundError, KeyError):
-    # 这里填入你的 Key 用于本地测试
-    PEXELS_API_KEY = "YOUR_KEY"
-    UNSPLASH_ACCESS_KEY = "YOUR_KEY"
+PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
+UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (简化版：只保留基础样式)
+# 2. CSS 样式 (简化版)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* 移除之前复杂的对齐 hack，回归简单 */
-        div[data-testid="column"] { align-items: flex-start; }
-        
         /* 隐藏 Streamlit 默认的一些元素 */
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 
@@ -84,21 +76,33 @@ def local_css():
             font-size: 3em; color: #111; text-align: center; 
             margin-top: -20px; font-weight: 900; letter-spacing: -1px;
         }
-        .sub-title {
-            text-align: center; color: #888; font-size: 0.9em; 
-            margin-bottom: 30px; letter-spacing: 3px; text-transform: uppercase;
-        }
         
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
             color: white !important; padding: 6px 12px; border-radius: 20px;
             font-weight: bold; font-size: 11px; margin-top: 8px;
         }
+        
+        /* 定义图片卡片的响应式高度 */
+        .moodboard-img {
+            height: 400px;
+            width: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+        
+        /* 手机端稍微改矮一点，避免占满整个屏幕 */
+        @media only screen and (max-width: 768px) {
+            .moodboard-img {
+                height: 250px;
+            }
+        }
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典 & 排除列表
+# 3. 视觉优化字典
 # ==========================================
 VISUAL_DICT = {
     "niqab": "niqab clothing", "hijab": "hijab clothing", "abaya": "abaya clothing", "burqa": "burqa clothing",
@@ -144,7 +148,7 @@ MODERN_EXCLUDE_LIST = [
 ]
 
 # ==========================================
-# 4. 搜图引擎 (保持不变)
+# 4. 搜图引擎
 # ==========================================
 @st.cache_data(ttl=3600)
 def _fetch_pexels(query, uhd_mode, limit):
@@ -382,24 +386,17 @@ if target_query:
             img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    # 🔥 终极解决方案：将图片和文字封装在同一个 HTML 块中 🔥
-                    # 这样可以保证 100% 的对齐，因为它们在同一个父容器里。
+                    # 🔥 HTML Card: 确保图片和文字 100% 对齐 🔥
                     html_card = f"""
                     <div style="width: 100%; margin-bottom: 20px;">
                         <div style="
                             width: 100%; 
-                            height: 400px; /* 固定高度 */
                             border-radius: 8px; 
                             overflow: hidden; 
                             background-color: #f0f0f0;
-                            margin-bottom: 8px; /* 图片和下方文字的间距 */
+                            margin-bottom: 8px;
                         ">
-                            <img src="{photo['src']}" style="
-                                width: 100%; 
-                                height: 100%; 
-                                object-fit: cover; 
-                                display: block;
-                            ">
+                            <img src="{photo['src']}" class="moodboard-img">
                         </div>
                         
                         <div style="
