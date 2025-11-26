@@ -9,7 +9,6 @@ from itertools import zip_longest
 # ==========================================
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 
-# 处理 URL 查询参数 (?q=...)
 if "q" in st.query_params:
     param_q = st.query_params["q"]
     if param_q:
@@ -19,34 +18,27 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. 配置区域 (API Key 安全处理)
+# 1. 配置区域
 # ==========================================
-# 优先尝试从 st.secrets 读取，如果没有则使用本地变量（请替换为你自己的 Key）
 try:
     PEXELS_API_KEY = st.secrets["api_keys"]["pexels"]
     UNSPLASH_ACCESS_KEY = st.secrets["api_keys"]["unsplash"]
 except (FileNotFoundError, KeyError):
-    # ⚠️ 警告：请在本地 .streamlit/secrets.toml 中配置，或在此处临时填入（不要上传到 GitHub）
-    PEXELS_API_KEY = "YOUR_PEXELS_KEY_HERE" 
-    UNSPLASH_ACCESS_KEY = "YOUR_UNSPLASH_KEY_HERE"
+    # 这里填入你的 Key 用于本地测试
+    PEXELS_API_KEY = "YOUR_KEY"
+    UNSPLASH_ACCESS_KEY = "YOUR_KEY"
 
 # ==========================================
-# 2. CSS 样式 (UI 终极修复：完美对齐 + 移动端适配)
+# 2. CSS 样式 (简化版：只保留基础样式)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 全局列调整 --- */
-        div[data-testid="column"] {
-            align-items: center; /* 垂直方向居中 */
-        }
+        /* 移除之前复杂的对齐 hack，回归简单 */
+        div[data-testid="column"] { align-items: flex-start; }
         
-        /* 🔥 关键修复：强制 Markdown 容器占满列宽，解决对齐问题 🔥 */
-        div[data-testid="column"] div[data-testid="stMarkdownContainer"] {
-            width: 100% !important;
-        }
-
-        div[data-testid="stCheckbox"] { margin-top: 12px; }
+        /* 隐藏 Streamlit 默认的一些元素 */
+        #MainMenu {visibility: hidden;} footer {visibility: hidden;}
 
         /* --- 标题与分割线 --- */
         .category-header {
@@ -59,134 +51,54 @@ def local_css():
             text-transform: uppercase;
             padding-bottom: 8px; 
             border-bottom: 2px solid #f0f0f0; 
-            display: block;
-            width: 100%;
         }
 
-        /* --- 按钮网格样式 --- */
-        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
-            gap: 0.5rem;
-        }
-
-        /* 按钮本体样式 */
+        /* --- 按钮样式 --- */
         div[data-testid="column"] .stButton button {
             width: 100% !important;
-            height: 50px !important;        
-            min-height: 50px !important;
-            max-height: 50px !important;
-            border-radius: 10px;
-            border: 1px solid #f5f5f5;
+            height: 45px !important;        
+            border-radius: 8px;
+            border: 1px solid #eee;
             background-color: #fff;
-            color: #444;
+            color: #555;
             font-size: 13px;
             font-weight: 500;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important; 
-            padding: 0 4px !important;
+            transition: all 0.2s;
         }
-        
-        /* 按钮内部文字 */
-        div[data-testid="column"] .stButton button p {
-            font-size: 13px;
-            line-height: 1.2 !important;
-            text-align: center !important;
-            margin: 0 !important;
-            white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis; 
-            width: 100%;
-            display: block !important;
-        }
-        
-        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
-        }
-
-        /* 悬停效果 */
         div[data-testid="column"] .stButton button:hover {
             border-color: #002FA7;
             color: #002FA7;
             background-color: #f8faff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,47,167,0.08);
-            z-index: 2;
         }
 
-        /* --- Tag 链接样式 --- */
+        /* --- Tag 链接 --- */
         .tag-link {
             display: inline-block; color: #999; text-decoration: none !important;
-            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
-            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
+            font-size: 12px; margin-right: 12px; margin-bottom: 8px;
+            transition: color 0.2s;
         }
-        .tag-link:hover { color: #333; opacity: 0.8; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-
-        /* --- 字体与标题 --- */
+        .tag-link:hover { color: #333; }
+        
         .main-title {
-            font-family: "PingFang SC", "Helvetica Neue", sans-serif;
-            font-size: 3.2em; color: #111; text-align: center; 
-            margin-top: -20px; margin-bottom: 0px; font-weight: 900; letter-spacing: -1px;
+            font-family: "Helvetica Neue", sans-serif;
+            font-size: 3em; color: #111; text-align: center; 
+            margin-top: -20px; font-weight: 900; letter-spacing: -1px;
         }
         .sub-title {
             text-align: center; color: #888; font-size: 0.9em; 
-            margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
-        }
-
-        /* --- 核心修复：统一图片尺寸与对齐 --- */
-        div[data-testid="stImage"] {
-            margin-bottom: 0px !important; /* 移除图片与下方文字的默认间距 */
-        }
-
-        div[data-testid="stImage"] img {
-            width: 100% !important; 
-            object-fit: cover !important; 
-            border-radius: 8px !important;
-            /* 桌面端高度 */
-            height: 400px !important; 
-            min-height: 400px !important;
-            max-height: 400px !important;
-        }
-
-        /* 📱 移动端适配：屏幕宽度小于 768px 时 */
-        @media only screen and (max-width: 768px) {
-            div[data-testid="stImage"] img {
-                height: 250px !important; 
-                min-height: 250px !important;
-                max-height: 250px !important;
-            }
+            margin-bottom: 30px; letter-spacing: 3px; text-transform: uppercase;
         }
         
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
             color: white !important; padding: 6px 12px; border-radius: 20px;
-            font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
+            font-weight: bold; font-size: 11px; margin-top: 8px;
         }
-        .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
-        
-        .source-badge {
-            font-size: 10px; 
-            color: #888; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-            border: 1px solid #eee; 
-            padding: 3px 8px; 
-            border-radius: 4px;
-            background-color: #fff;
-            white-space: nowrap;
-        }
-
-        #MainMenu {visibility: hidden;} footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. 视觉优化字典
+# 3. 视觉优化字典 & 排除列表
 # ==========================================
 VISUAL_DICT = {
     "niqab": "niqab clothing", "hijab": "hijab clothing", "abaya": "abaya clothing", "burqa": "burqa clothing",
@@ -232,7 +144,7 @@ MODERN_EXCLUDE_LIST = [
 ]
 
 # ==========================================
-# 4. 搜图引擎
+# 4. 搜图引擎 (保持不变)
 # ==========================================
 @st.cache_data(ttl=3600)
 def _fetch_pexels(query, uhd_mode, limit):
@@ -322,22 +234,14 @@ def _fetch_met(query, limit):
 def get_wiki_summary(query):
     try:
         wikipedia.set_lang("en")
-        # 优化：限制结果为1，提高速度
         search_results = wikipedia.search(query, results=1)
         if not search_results: return None, "#", None
-        
         target_term = search_results[0]
         try:
-            # 优化：auto_suggest=False 防止跳偏
             page = wikipedia.page(target_term, auto_suggest=False)
             if not page.summary: return None, "#", None
             return page.summary[0:600] + "...", page.url, page.title
-        except wikipedia.DisambiguationError as e:
-            try:
-                page = wikipedia.page(e.options[0], auto_suggest=False)
-                return page.summary[0:600] + "...", page.url, page.title
-            except: return None, "#", None
-        except wikipedia.PageError: return None, "#", None
+        except: return None, "#", None
     except Exception: return None, "#", None
 
 def get_visuals(user_query, uhd_mode):
@@ -378,14 +282,11 @@ def get_visuals(user_query, uhd_mode):
         m_final = m_photos[:limit_per_source]
     
     combined_photos = []
-    # 修复：防止 zip_longest 产生 None 值导致渲染报错
     for batch in zip_longest(p_final, u_final, a_final, m_final):
         for photo in batch:
-            if photo:
-                combined_photos.append(photo)
+            if photo: combined_photos.append(photo)
     
     random.shuffle(combined_photos)
-        
     return combined_photos, "", search_term, is_optimized
 
 # ==========================================
@@ -413,7 +314,6 @@ with st.container():
     def create_grid(column, title, emoji, items):
         with column:
             st.markdown(f"<div class='category-header'>{emoji} {title}</div>", unsafe_allow_html=True)
-            st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
             grid_cols = st.columns(2, gap="small") 
             for i, (label, val) in enumerate(items):
                 col_idx = 0 if i % 2 == 0 else 1
@@ -447,16 +347,9 @@ if target_query:
     
     # --- 左栏 ---
     with col_left:
-        if is_default:
-            st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span></h3>", unsafe_allow_html=True)
-        else:
-            st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>📖 Context</h3>", unsafe_allow_html=True)
-            if is_opt:
-                st.caption(f"🎨 Optimized: `{optimized_term}`")
-            else:
-                st.caption(f"🔍 Result: `{optimized_term}`")
-
+        st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>{'🔥 Trending' if is_default else '📖 Context'}</h3>", unsafe_allow_html=True)
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
+        
         if wiki_text:
             st.markdown(f"{wiki_text}")
             st.markdown(f"[👉 Read on Wikipedia]({wiki_link})")
@@ -464,7 +357,6 @@ if target_query:
             st.info("Visual exploration mode.") if is_default else st.warning("No context found.")
             
         st.markdown("---")
-        st.markdown("### 📌 External")
         pinterest_url = f"https://www.pinterest.com/search/pins/?q={target_query.replace(' ', '%20')}"
         st.markdown(f"<a href='{pinterest_url}' target='_blank' class='pinterest-btn'>Search on Pinterest ↗</a>", unsafe_allow_html=True)
 
@@ -472,8 +364,7 @@ if target_query:
         st.markdown("### ✨ Explore Aesthetics")
         soul_tags = [
             "🫧 #FrutigerAero", "👁️ #Dreamcore", "☀️ #Solarpunk", "🧚‍♀️ #AcidPixie", 
-            "📜 #DarkAcademia", "🗿 #Vaporwave", "🚪 #LiminalSpace", "📺 #GlitchCore",
-            "🍄 #Bioluminescence", "🌈 #Chromatic", "📸 #Knolling", "🏛️ #LightAcademia"
+            "📜 #DarkAcademia", "🗿 #Vaporwave", "🚪 #LiminalSpace", "📺 #GlitchCore"
         ]
         tags_html = "<div class='tag-container'>"
         for tag in soul_tags:
@@ -482,7 +373,7 @@ if target_query:
         tags_html += "</div>"
         st.markdown(tags_html, unsafe_allow_html=True)
 
-    # --- 右栏：Images ---
+    # --- 右栏：Images (HTML Card 方案) ---
     with col_right:
         st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🖼️ Visual Board</h3>", unsafe_allow_html=True)
         
@@ -491,39 +382,57 @@ if target_query:
             img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    # 1. 图片渲染 (CSS已强制统一宽度和高度)
-                    st.image(photo['src'], use_container_width=True)
-                    
-                    # 2. 标签栏 (完美对齐版)
-                    # width: 100% !important 配合 CSS 确保撑满列宽，Flexbox 确保左右分开
-                    st.markdown(f"""
+                    # 🔥 终极解决方案：将图片和文字封装在同一个 HTML 块中 🔥
+                    # 这样可以保证 100% 的对齐，因为它们在同一个父容器里。
+                    html_card = f"""
+                    <div style="width: 100%; margin-bottom: 20px;">
+                        <div style="
+                            width: 100%; 
+                            height: 400px; /* 固定高度 */
+                            border-radius: 8px; 
+                            overflow: hidden; 
+                            background-color: #f0f0f0;
+                            margin-bottom: 8px; /* 图片和下方文字的间距 */
+                        ">
+                            <img src="{photo['src']}" style="
+                                width: 100%; 
+                                height: 100%; 
+                                object-fit: cover; 
+                                display: block;
+                            ">
+                        </div>
+                        
                         <div style="
                             display: flex; 
-                            flex-direction: row; 
                             justify-content: space-between; 
                             align-items: center; 
-                            width: 100% !important;
-                            margin-top: 6px; 
-                            margin-bottom: 24px;
                             font-family: sans-serif;
+                            font-size: 11px;
                         ">
                             <a href="{photo['url']}" target="_blank" style="
-                                color: #333; 
-                                font-size: 12px; 
-                                font-weight: 600; 
                                 text-decoration: none; 
-                                opacity: 0.7;
-                                transition: opacity 0.2s;
-                            " onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
-                               ⬇️ Download
-                            </a>
-                            <span class="source-badge" title="{photo['alt']}">
-                                Via {photo['source']}
+                                color: #333; 
+                                font-weight: 600;
+                                background: #eee;
+                                padding: 4px 8px;
+                                border-radius: 4px;
+                            ">⬇️ Get</a>
+                            
+                            <span style="
+                                color: #888; 
+                                text-transform: uppercase; 
+                                border: 1px solid #eee; 
+                                padding: 3px 6px; 
+                                border-radius: 4px;
+                            ">
+                                {photo['source']}
                             </span>
                         </div>
-                    """, unsafe_allow_html=True)
+                    </div>
+                    """
+                    st.markdown(html_card, unsafe_allow_html=True)
         else:
             st.warning("No images found.")
 
 st.markdown("---")
-st.markdown("<div class='footer'>Powered by Streamlit | Pexels, Unsplash, The Met & AIC<br><strong>© 2025 Leki's Arc Inc.</strong></div>", unsafe_allow_html=True)
+st.markdown("<div class='footer'>Powered by Streamlit | Pexels, Unsplash, The Met & AIC</div>", unsafe_allow_html=True)
