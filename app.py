@@ -58,7 +58,7 @@ def local_css():
         /* 按钮本体样式 */
         div[data-testid="column"] .stButton button {
             width: 100% !important;
-            height: 50px !important;       
+            height: 50px !important;        
             min-height: 50px !important;
             max-height: 50px !important;
             
@@ -128,11 +128,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
 
-        /* --- 图片与组件 --- */
-        div[data-testid="stImage"] img {
-            height: 450px !important; object-fit: cover !important; 
-            border-radius: 8px !important; width: 100% !important;
-        }
+        /* --- 图片与组件 (移除旧的img样式，改用Inline Style控制) --- */
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
             color: white !important; padding: 6px 12px; border-radius: 20px;
@@ -144,6 +140,7 @@ def local_css():
             font-size: 9px; color: #999; text-transform: uppercase; letter-spacing: 0.5px;
             border: 1px solid #eee; padding: 2px 5px; border-radius: 3px;
             background-color: #fcfcfc;
+            display: inline-block;
         }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -283,7 +280,6 @@ def _fetch_met(query, limit):
         return [], f"Met Search {res.status_code}"
     except Exception as e: return [], str(e)
 
-# --- 优化后的维基百科处理函数 ---
 @st.cache_data(ttl=3600)
 def get_wiki_summary(query):
     try:
@@ -294,11 +290,9 @@ def get_wiki_summary(query):
         
         target_term = search_results[0]
         try:
-            # 尝试直接获取
             page = wikipedia.page(target_term, auto_suggest=False)
             return page.summary[0:600] + "...", page.url, target_term
         except wikipedia.DisambiguationError as e:
-            # 处理歧义：自动选择第一个推荐项
             try:
                 first_option = e.options[0]
                 page = wikipedia.page(first_option, auto_suggest=False)
@@ -413,13 +407,10 @@ if target_query:
         wiki_text, wiki_link, wiki_title = get_wiki_summary(target_query)
         photos, error_msg, optimized_term, is_opt = get_visuals(target_query, uhd_mode)
     
-    # 核心修改：移除这里的外部 markdown，将标题逻辑放入下面的列中以确保对齐
-    
     col_left, col_right = st.columns([1, 2.5])
     
     # --- 左栏：Context & Trending ---
     with col_left:
-        # 1. 标题对齐修复：使用内联样式强制去除 margin-top，与右侧严格对齐
         if is_default:
             st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🔥 Trending Now: <span style='color:#002FA7'>{target_query.title()}</span></h3>", unsafe_allow_html=True)
         else:
@@ -429,7 +420,6 @@ if target_query:
             else:
                 st.caption(f"🔍 Result: `{optimized_term}`")
 
-        # 内容区域
         st.caption(f"Topic: {wiki_title if wiki_title else target_query}")
         if wiki_text:
             st.markdown(f"{wiki_text}")
@@ -456,9 +446,8 @@ if target_query:
         tags_html += "</div>"
         st.markdown(tags_html, unsafe_allow_html=True)
 
-    # --- 右栏：Images ---
+    # --- 右栏：Images (Visual Board) ---
     with col_right:
-        # 2. 标题对齐修复：同样强制去除 margin-top
         st.markdown(f"<h3 style='margin-top:0; padding-top:0; line-height:1.2;'>🖼️ Visual Board</h3>", unsafe_allow_html=True)
         
         if error_msg and not photos: st.warning(error_msg)
@@ -466,19 +455,24 @@ if target_query:
             img_cols = st.columns(3)
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    st.image(photo['src'], use_container_width=True)
-                    
-                    # 3. 图像源对齐修复：
-                    # 使用 justify-content: space-between 将 "Download" 放在最左，"Source" 放在最右
-                    # 移除了额外的 margin，确保紧贴边缘
-                    st.markdown(f"""
-                        <div style="font-size:12px; margin-top:8px; margin-bottom:20px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                <a href="{photo['url']}" target="_blank" style="color:#333; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <div style="text-align:right;"><span class="source-badge">Via {photo['source']}</span></div>
+                    # --- 核心修改：使用纯 HTML 渲染整个卡片（图片+底部栏） ---
+                    # 这确保了图片和底部栏在同一个 DIV 容器内，无论怎么拉伸，宽度永远一致
+                    card_html = f"""
+                    <div style="width: 100%; margin-bottom: 25px;">
+                        <div style="border-radius: 8px; overflow: hidden; height: 450px; width: 100%;">
+                            <img src="{photo['src']}" style="width: 100%; height: 100%; object-fit: cover; display: block;" alt="{photo['alt']}">
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-family: sans-serif;">
+                            <a href="{photo['url']}" target="_blank" style="text-decoration: none; color: #333; font-weight: bold; font-size: 12px; display: flex; align-items: center;">
+                                ⬇️ Download
+                            </a>
+                            <div style="text-align: right;">
+                                <span class="source-badge">Via {photo['source']}</span>
                             </div>
                         </div>
-                    """, unsafe_allow_html=True)
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
         else:
             st.warning("No images found.")
 
