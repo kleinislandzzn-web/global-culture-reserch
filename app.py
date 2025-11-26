@@ -9,6 +9,7 @@ from itertools import zip_longest
 # ==========================================
 st.set_page_config(page_title="Visual Moodboard", page_icon="🎨", layout="wide")
 
+# 处理 URL 查询参数 (?q=...)
 if "q" in st.query_params:
     param_q = st.query_params["q"]
     if param_q:
@@ -18,49 +19,113 @@ if 'search_query' not in st.session_state:
     st.session_state.search_query = ""
 
 # ==========================================
-# 1. API 配置 (请确保配置 .streamlit/secrets.toml)
+# 1. 配置区域 (API Key 安全处理)
 # ==========================================
-# ⚠️ 生产环境请务必隐藏 Key
-PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
-UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
+# 优先尝试从 st.secrets 读取，如果没有则使用本地变量（请替换为你自己的 Key）
+try:
+    PEXELS_API_KEY = st.secrets["api_keys"]["pexels"]
+    UNSPLASH_ACCESS_KEY = st.secrets["api_keys"]["unsplash"]
+except (FileNotFoundError, KeyError):
+    # ⚠️ 警告：请在本地 .streamlit/secrets.toml 中配置，或在此处临时填入（不要上传到 GitHub）
+    PEXELS_API_KEY = "YOUR_PEXELS_KEY_HERE" 
+    UNSPLASH_ACCESS_KEY = "YOUR_UNSPLASH_KEY_HERE"
 
 # ==========================================
-# 2. CSS 样式
+# 2. CSS 样式 (UI 终极修复：完美对齐 + 移动端适配)
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 全局布局调整 --- */
-        div[data-testid="column"] { align-items: center; }
+        /* --- 全局列调整 --- */
+        div[data-testid="column"] {
+            align-items: center; /* 垂直方向居中 */
+        }
+        
+        /* 🔥 关键修复：强制 Markdown 容器占满列宽，解决对齐问题 🔥 */
+        div[data-testid="column"] div[data-testid="stMarkdownContainer"] {
+            width: 100% !important;
+        }
+
         div[data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 标题样式 --- */
+        /* --- 标题与分割线 --- */
         .category-header {
-            text-align: center; font-size: 13px; color: #999; 
-            font-weight: 700; letter-spacing: 1.5px; margin-bottom: 12px; 
-            text-transform: uppercase; padding-bottom: 8px; 
-            border-bottom: 2px solid #f0f0f0; display: block; width: 100%;
+            text-align: center; 
+            font-size: 13px; 
+            color: #999; 
+            font-weight: 700;
+            letter-spacing: 1.5px; 
+            margin-bottom: 12px; 
+            text-transform: uppercase;
+            padding-bottom: 8px; 
+            border-bottom: 2px solid #f0f0f0; 
+            display: block;
+            width: 100%;
         }
 
-        /* --- 按钮美化 --- */
+        /* --- 按钮网格样式 --- */
+        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
+            gap: 0.5rem;
+        }
+
+        /* 按钮本体样式 */
         div[data-testid="column"] .stButton button {
-            width: 100% !important; height: 50px !important;       
-            min-height: 50px !important; max-height: 50px !important;
-            border-radius: 10px; border: 1px solid #f5f5f5;
-            background-color: #fff; color: #444;
-            font-size: 13px; font-weight: 500;
+            width: 100% !important;
+            height: 50px !important;        
+            min-height: 50px !important;
+            max-height: 50px !important;
+            border-radius: 10px;
+            border: 1px solid #f5f5f5;
+            background-color: #fff;
+            color: #444;
+            font-size: 13px;
+            font-weight: 500;
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            transition: all 0.2s;
-            margin: 0 !important; padding: 0 4px !important;
+            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important; 
+            padding: 0 4px !important;
         }
-        div[data-testid="column"] .stButton button:hover {
-            border-color: #002FA7; color: #002FA7; background-color: #f8faff;
-            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,47,167,0.08); z-index: 2;
-        }
+        
+        /* 按钮内部文字 */
         div[data-testid="column"] .stButton button p {
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
-            width: 100%; display: block !important; line-height: 1.2 !important;
+            font-size: 13px;
+            line-height: 1.2 !important;
+            text-align: center !important;
+            margin: 0 !important;
+            white-space: nowrap; 
+            overflow: hidden;
+            text-overflow: ellipsis; 
+            width: 100%;
+            display: block !important;
         }
+        
+        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100% !important;
+        }
+
+        /* 悬停效果 */
+        div[data-testid="column"] .stButton button:hover {
+            border-color: #002FA7;
+            color: #002FA7;
+            background-color: #f8faff;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,47,167,0.08);
+            z-index: 2;
+        }
+
+        /* --- Tag 链接样式 --- */
+        .tag-link {
+            display: inline-block; color: #999; text-decoration: none !important;
+            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
+            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
+        }
+        .tag-link:hover { color: #333; opacity: 0.8; }
+        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
 
         /* --- 字体与标题 --- */
         .main-title {
@@ -73,14 +138,29 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
 
-        /* --- 侧边栏样式 --- */
-        .tag-link {
-            display: inline-block; color: #999; text-decoration: none !important;
-            font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
-            font-family: "Helvetica Neue", sans-serif; transition: color 0.2s;
+        /* --- 核心修复：统一图片尺寸与对齐 --- */
+        div[data-testid="stImage"] {
+            margin-bottom: 0px !important; /* 移除图片与下方文字的默认间距 */
         }
-        .tag-link:hover { color: #333; opacity: 0.8; }
-        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+
+        div[data-testid="stImage"] img {
+            width: 100% !important; 
+            object-fit: cover !important; 
+            border-radius: 8px !important;
+            /* 桌面端高度 */
+            height: 400px !important; 
+            min-height: 400px !important;
+            max-height: 400px !important;
+        }
+
+        /* 📱 移动端适配：屏幕宽度小于 768px 时 */
+        @media only screen and (max-width: 768px) {
+            div[data-testid="stImage"] img {
+                height: 250px !important; 
+                min-height: 250px !important;
+                max-height: 250px !important;
+            }
+        }
         
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
@@ -88,46 +168,17 @@ def local_css():
             font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
         }
         .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
-
-        /* =================================================================
-           🔥 终极修复：自定义 HTML 卡片样式
-           这是为了替代 st.image 实现完美对齐
-           ================================================================= */
-        .card-container {
-            width: 100%;
-            margin-bottom: 24px;
-            /* 确保没有任何 padding 干扰 */
-            padding: 0;
-            box-sizing: border-box;
-        }
         
-        .card-img {
-            display: block; /* 消除图片底部的幽灵间隙 */
-            width: 100%;
-            height: 400px;
-            object-fit: cover;
-            border-radius: 8px;
-            transition: transform 0.3s ease;
-        }
-        
-        .card-meta {
-            margin-top: 8px;
-            width: 100%;
-            display: flex; 
-            justify-content: space-between; /* 左右强制推到边缘 */
-            align-items: center;
-            font-family: sans-serif;
-        }
-
-        .card-dl {
-            color: #333; font-size: 12px; font-weight: bold; text-decoration: none;
-        }
-        .card-dl:hover { color: #002FA7; }
-
-        .card-source {
-            font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
-            border: 1px solid #eee; padding: 2px 6px; border-radius: 4px;
-            background-color: #fff; white-space: nowrap;
+        .source-badge {
+            font-size: 10px; 
+            color: #888; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px;
+            border: 1px solid #eee; 
+            padding: 3px 8px; 
+            border-radius: 4px;
+            background-color: #fff;
+            white-space: nowrap;
         }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -271,17 +322,20 @@ def _fetch_met(query, limit):
 def get_wiki_summary(query):
     try:
         wikipedia.set_lang("en")
-        search_results = wikipedia.search(query)
+        # 优化：限制结果为1，提高速度
+        search_results = wikipedia.search(query, results=1)
         if not search_results: return None, "#", None
+        
         target_term = search_results[0]
         try:
+            # 优化：auto_suggest=False 防止跳偏
             page = wikipedia.page(target_term, auto_suggest=False)
-            return page.summary[0:600] + "...", page.url, target_term
+            if not page.summary: return None, "#", None
+            return page.summary[0:600] + "...", page.url, page.title
         except wikipedia.DisambiguationError as e:
             try:
-                first_option = e.options[0]
-                page = wikipedia.page(first_option, auto_suggest=False)
-                return page.summary[0:600] + "...", page.url, first_option
+                page = wikipedia.page(e.options[0], auto_suggest=False)
+                return page.summary[0:600] + "...", page.url, page.title
             except: return None, "#", None
         except wikipedia.PageError: return None, "#", None
     except Exception: return None, "#", None
@@ -324,11 +378,11 @@ def get_visuals(user_query, uhd_mode):
         m_final = m_photos[:limit_per_source]
     
     combined_photos = []
-    for p, u, a, m in zip_longest(p_final, u_final, a_final, m_final):
-        if p: combined_photos.append(p)
-        if u: combined_photos.append(u)
-        if a: combined_photos.append(a)
-        if m: combined_photos.append(m)
+    # 修复：防止 zip_longest 产生 None 值导致渲染报错
+    for batch in zip_longest(p_final, u_final, a_final, m_final):
+        for photo in batch:
+            if photo:
+                combined_photos.append(photo)
     
     random.shuffle(combined_photos)
         
@@ -437,18 +491,37 @@ if target_query:
             img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    # 🔥 核心修改：使用 st.markdown 渲染包含图片和文字的完整 HTML 卡片
-                    # 这样它们共享同一个 CSS 盒子，绝对保证对齐
-                    card_html = f"""
-                    <div class="card-container">
-                        <img src="{photo['src']}" class="card-img" loading="lazy">
-                        <div class="card-meta">
-                            <a href="{photo['url']}" target="_blank" class="card-dl">⬇️ Download</a>
-                            <span class="card-source">Via {photo['source']}</span>
+                    # 1. 图片渲染 (CSS已强制统一宽度和高度)
+                    st.image(photo['src'], use_container_width=True)
+                    
+                    # 2. 标签栏 (完美对齐版)
+                    # width: 100% !important 配合 CSS 确保撑满列宽，Flexbox 确保左右分开
+                    st.markdown(f"""
+                        <div style="
+                            display: flex; 
+                            flex-direction: row; 
+                            justify-content: space-between; 
+                            align-items: center; 
+                            width: 100% !important;
+                            margin-top: 6px; 
+                            margin-bottom: 24px;
+                            font-family: sans-serif;
+                        ">
+                            <a href="{photo['url']}" target="_blank" style="
+                                color: #333; 
+                                font-size: 12px; 
+                                font-weight: 600; 
+                                text-decoration: none; 
+                                opacity: 0.7;
+                                transition: opacity 0.2s;
+                            " onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">
+                               ⬇️ Download
+                            </a>
+                            <span class="source-badge" title="{photo['alt']}">
+                                Via {photo['source']}
+                            </span>
                         </div>
-                    </div>
-                    """
-                    st.markdown(card_html, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
         else:
             st.warning("No images found.")
 
