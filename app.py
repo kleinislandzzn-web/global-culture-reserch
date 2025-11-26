@@ -25,82 +25,41 @@ PEXELS_API_KEY = "SmnlcdOVoFqWd4dyrh92DsIwtmSUqfgQqKiiDgcsi8xKYxov4HYfEE26"
 UNSPLASH_ACCESS_KEY = "WLSYgnTBqCLjqXlQeZe04M5_UVsfJBRzgDOcdAkG2sE"
 
 # ==========================================
-# 2. CSS 样式 (UI 终极修复：完美对齐版)
+# 2. CSS 样式
 # ==========================================
 def local_css():
     st.markdown("""
     <style>
-        /* --- 全局列调整 --- */
-        div[data-testid="column"] {
-            align-items: center; 
-        }
+        /* --- 全局布局调整 --- */
+        div[data-testid="column"] { align-items: center; }
         div[data-testid="stCheckbox"] { margin-top: 12px; }
 
-        /* --- 标题与分割线 --- */
+        /* --- 标题样式 --- */
         .category-header {
-            text-align: center; 
-            font-size: 13px; 
-            color: #999; 
-            font-weight: 700;
-            letter-spacing: 1.5px; 
-            margin-bottom: 12px; 
-            text-transform: uppercase;
-            padding-bottom: 8px; 
-            border-bottom: 2px solid #f0f0f0; 
-            display: block;
-            width: 100%;
+            text-align: center; font-size: 13px; color: #999; 
+            font-weight: 700; letter-spacing: 1.5px; margin-bottom: 12px; 
+            text-transform: uppercase; padding-bottom: 8px; 
+            border-bottom: 2px solid #f0f0f0; display: block; width: 100%;
         }
 
-        /* --- 按钮网格样式 --- */
-        div[data-testid="stVerticalBlock"] > div > div[data-testid="stVerticalBlock"] {
-            gap: 0.5rem;
-        }
-
+        /* --- 按钮美化 --- */
         div[data-testid="column"] .stButton button {
-            width: 100% !important;
-            height: 50px !important;       
-            min-height: 50px !important;
-            max-height: 50px !important;
-            border-radius: 10px;
-            border: 1px solid #f5f5f5;
-            background-color: #fff;
-            color: #444;
-            font-size: 13px;
-            font-weight: 500;
+            width: 100% !important; height: 50px !important;       
+            min-height: 50px !important; max-height: 50px !important;
+            border-radius: 10px; border: 1px solid #f5f5f5;
+            background-color: #fff; color: #444;
+            font-size: 13px; font-weight: 500;
             box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            margin: 0 !important; 
-            padding: 0 4px !important;
+            transition: all 0.2s;
+            margin: 0 !important; padding: 0 4px !important;
         }
-        
-        div[data-testid="column"] .stButton button p {
-            font-size: 13px;
-            line-height: 1.2 !important;
-            text-align: center !important;
-            margin: 0 !important;
-            white-space: nowrap; 
-            overflow: hidden;
-            text-overflow: ellipsis; 
-            width: 100%;
-            display: block !important;
-        }
-        
-        div[data-testid="column"] .stButton button div[data-testid="stMarkdownContainer"] {
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
-        }
-
         div[data-testid="column"] .stButton button:hover {
-            border-color: #002FA7;
-            color: #002FA7;
-            background-color: #f8faff;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0,47,167,0.08);
-            z-index: 2;
+            border-color: #002FA7; color: #002FA7; background-color: #f8faff;
+            transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,47,167,0.08); z-index: 2;
+        }
+        div[data-testid="column"] .stButton button p {
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; 
+            width: 100%; display: block !important; line-height: 1.2 !important;
         }
 
         /* --- 字体与标题 --- */
@@ -114,7 +73,7 @@ def local_css():
             margin-bottom: 30px; font-weight: 500; letter-spacing: 3px; text-transform: uppercase;
         }
 
-        /* --- Tag 链接 --- */
+        /* --- 侧边栏样式 --- */
         .tag-link {
             display: inline-block; color: #999; text-decoration: none !important;
             font-size: 12px; font-weight: 500; margin-right: 12px; margin-bottom: 8px;
@@ -122,36 +81,6 @@ def local_css():
         }
         .tag-link:hover { color: #333; opacity: 0.8; }
         .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-
-        /* =================================================================
-           🔥 核心修复区：图片与文字的绝对对齐
-           ================================================================= */
-        
-        /* 1. 图片强制填满容器，无边距 */
-        div[data-testid="stImage"] {
-            width: 100% !important;
-            margin-bottom: 0px !important;
-        }
-
-        div[data-testid="stImage"] img {
-            height: 400px !important; 
-            min-height: 400px !important;
-            max-height: 400px !important;
-            width: 100% !important; 
-            object-fit: cover !important; 
-            border-radius: 8px !important;
-        }
-
-        /* 2. 修复 Markdown 容器，消除默认 Padding，确保文字能顶到边缘 */
-        div[data-testid="stMarkdownContainer"] p {
-            margin-bottom: 0px !important;
-            padding: 0px !important;
-        }
-        
-        div[data-testid="stMarkdownContainer"] {
-            padding-left: 0px !important;
-            padding-right: 0px !important;
-        }
         
         .pinterest-btn {
             display: inline-block; text-decoration: none; background-color: #E60023;
@@ -159,13 +88,46 @@ def local_css():
             font-weight: bold; font-size: 11px; margin-top: 8px; transition: all 0.3s;
         }
         .pinterest-btn:hover { background-color: #ad081b; transform: translateY(-1px); }
+
+        /* =================================================================
+           🔥 终极修复：自定义 HTML 卡片样式
+           这是为了替代 st.image 实现完美对齐
+           ================================================================= */
+        .card-container {
+            width: 100%;
+            margin-bottom: 24px;
+            /* 确保没有任何 padding 干扰 */
+            padding: 0;
+            box-sizing: border-box;
+        }
         
-        .source-badge {
+        .card-img {
+            display: block; /* 消除图片底部的幽灵间隙 */
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+        
+        .card-meta {
+            margin-top: 8px;
+            width: 100%;
+            display: flex; 
+            justify-content: space-between; /* 左右强制推到边缘 */
+            align-items: center;
+            font-family: sans-serif;
+        }
+
+        .card-dl {
+            color: #333; font-size: 12px; font-weight: bold; text-decoration: none;
+        }
+        .card-dl:hover { color: #002FA7; }
+
+        .card-source {
             font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.5px;
             border: 1px solid #eee; padding: 2px 6px; border-radius: 4px;
-            background-color: #fff;
-            /* 确保徽章内的文字不换行 */
-            white-space: nowrap; 
+            background-color: #fff; white-space: nowrap;
         }
 
         #MainMenu {visibility: hidden;} footer {visibility: hidden;}
@@ -472,24 +434,21 @@ if target_query:
         
         if error_msg and not photos: st.warning(error_msg)
         if photos:
-            # gap="small" 保持视觉紧凑
             img_cols = st.columns(3, gap="small")
             for idx, photo in enumerate(photos):
                 with img_cols[idx % 3]:
-                    # 1. 图像渲染 (CSS 强制填满宽 + 固定高)
-                    st.image(photo['src'], use_container_width=True)
-                    
-                    # 2. 标签栏 (HTML Flexbox 强制填满宽)
-                    # width: 100% !important 确保容器不缩水
-                    # display: flex; justify-content: space-between 确保左右对齐到极致
-                    st.markdown(f"""
-                        <div style="width:100% !important; margin-top:6px; margin-bottom:24px; box-sizing:border-box;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                                <a href="{photo['url']}" target="_blank" style="color:#333; font-size:12px; font-weight:bold; text-decoration:none;">⬇️ Download</a>
-                                <span class="source-badge">Via {photo['source']}</span>
-                            </div>
+                    # 🔥 核心修改：使用 st.markdown 渲染包含图片和文字的完整 HTML 卡片
+                    # 这样它们共享同一个 CSS 盒子，绝对保证对齐
+                    card_html = f"""
+                    <div class="card-container">
+                        <img src="{photo['src']}" class="card-img" loading="lazy">
+                        <div class="card-meta">
+                            <a href="{photo['url']}" target="_blank" class="card-dl">⬇️ Download</a>
+                            <span class="card-source">Via {photo['source']}</span>
                         </div>
-                    """, unsafe_allow_html=True)
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
         else:
             st.warning("No images found.")
 
